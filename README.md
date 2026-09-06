@@ -15,6 +15,30 @@ behind [Zelda 64: Recompiled](https://github.com/Zelda64Recomp/Zelda64Recomp).
 > (SHA-1 `e5ab4d226c08d22f68a2edcc48870203e67454b8`). No ROM, assets, or other copyrighted
 > material may ever be committed to this repo.
 
+## Lineage, and how this is built
+
+This repository **continues an existing, in-progress port**: the original recomp work is
+[bryankruman/BeetleRecomp](https://github.com/danielgomesvieira2000/BeetleRecomp), which got the game
+booting, rendering, taking input and playing audio, along with the in-app launcher, settings and
+cheats menus. None of that groundwork is mine. This repo picks that up and carries it forward as a
+standalone project.
+
+**The continued work is vibe coded with [Claude Code](https://claude.com/claude-code).** That is a
+plain description of the process rather than a disclaimer: the features added here — widescreen, the
+HUD that anchors to the widened frame, the extended draw distance and the matching culling fix — were
+designed, measured, written, tested and documented in conversation with Claude Code, driven by
+in-game testing and by the diagnostics the port carries (`BAR_DBG_*`, headless scripted runs and
+screenshots). The commits carry a `Co-Authored-By: Claude` trailer where that is the case.
+
+Two consequences worth stating plainly, because they affect how you should read this repo:
+
+- **The documentation in `docs/` is the real artefact.** Findings, measurements and dead ends are
+  written down as they are made — including the negative results, which are the expensive part. If
+  you want to know *why* something is the way it is, `docs/` will usually tell you, in more detail
+  than is normal for a hobby port.
+- **It is tested by playing it.** Rendering changes are checked in a running game, not only in
+  captured frames; several defects here were only ever visible in motion.
+
 ## What this is
 
 Static recompilation translates the N64's MIPS machine code into C automatically, then links
@@ -163,11 +187,62 @@ AGPL is the correct umbrella. Vendored dependencies in `lib/` retain their own l
 
 ## Credits
 
-- **SynaMax / synamaxmusic** and **LLONSIT** — original
-  [bar-decomp](https://github.com/synamaxmusic/bar-decomp) / RE work this builds on.
-- **Wiseguy** and contributors — [N64Recomp], [N64ModernRuntime], Zelda 64: Recompiled.
-- **RT64 contributors** — the renderer.
-- **RmlUi** and **lunasvg** — the in-app menu toolkit and SVG rasterizer.
+Nothing here starts from scratch. A static-recompilation port is mostly other people's work, and the
+short version is: the recompiler, the runtime, the renderer, the decompilation and the original
+reverse engineering were all done by other people, and this repo is a thin layer on top of them.
+
+### This port
+
+- **Bryan Kruman** ([@bryankruman](https://github.com/bryankruman)) — the original BeetleRecomp: the
+  static-recompilation port itself, the overlay/module bridge that makes BAR's ~130 relocatable
+  modules work, the runtime fixes, the launcher and in-app menus, and the decomp fork the port
+  consumes. The great majority of the foundation this repo builds on.
+- **Daniel Gomes Vieira** ([@danielgomesvieira2000](https://github.com/danielgomesvieira2000)) —
+  continued work: Controller Pak saves, widescreen, HUD placement, draw distance and culling, and
+  the testing that found the defects in them.
+
+### The decompilation and reverse engineering
+
+- **SynaMax** ([@synamaxmusic](https://github.com/synamaxmusic)) — the original
+  [bar-decomp](https://github.com/synamaxmusic/bar-decomp) and
+  [bar-notes](https://github.com/synamaxmusic/bar-notes): the splat configuration, the module/overlay
+  build system, the symbol map and the IDO setup that everything downstream depends on.
+- **LLONSIT** — the module-system work and build-system documentation in that project.
+- **[BeetleDecomp](https://github.com/bryankruman/BeetleDecomp)** — the fork this port consumes for
+  its symbol-rich ELF and module/relocation metadata.
+
+### The recompilation toolchain and runtime
+
+- **Wiseguy** ([@Mr-Wiseguy](https://github.com/Mr-Wiseguy)) and the [N64Recomp] contributors —
+  [N64Recomp] (the static recompiler and RSPRecomp), [N64ModernRuntime] ([librecomp] and
+  [ultramodern]) and [Zelda 64: Recompiled](https://github.com/Zelda64Recomp/Zelda64Recomp), which is
+  the project that showed this approach works at all.
+- **[RecompFrontend](https://github.com/N64Recomp/RecompFrontend)** — the launcher, settings, input
+  and mod-menu frontend this port uses as-is.
+- **[RT64](https://github.com/rt64/rt64)** contributors — the N64 renderer (D3D12 / Vulkan / Metal)
+  that does the actual drawing, and whose extended-GBI aspect handling the widescreen HUD is built on.
+
+### Libraries
+
+- **[RmlUi](https://github.com/mikke89/RmlUi)** (mikke89) — the UI toolkit behind the in-app menus.
+- **[lunasvg](https://github.com/sammycage/lunasvg)** (sammycage) — SVG rasterizer for the menu icons.
+- **[SDL](https://www.libsdl.org/)** — windowing, input and platform layer.
+- **[miniaudio](https://github.com/mackron/miniaudio)** (mackron) — audio backend.
+- The libraries RT64 vendors in turn — Plume, plus Dear ImGui, hlslpp, spirv-cross, xxHash, zstd, stb
+  and others; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+### The wider N64 decompilation community
+
+The shared toolchain that makes any of this possible: **splat**, **ido-static-recomp**,
+**asm-differ**, **objdiff**, **m2c** and **decomp-permuter**.
+
+### AI tooling
+
+- **[Claude Code](https://claude.com/claude-code)** (Anthropic) — the continued work in this repo was
+  written with it, as described in [Lineage, and how this is built](#lineage-and-how-this-is-built).
+
+*If you contributed something that is credited wrongly or not at all, please open an issue — it is an
+oversight, not a claim.*
 
 [N64Recomp]: https://github.com/N64Recomp/N64Recomp
 [N64ModernRuntime]: https://github.com/N64Recomp/N64ModernRuntime

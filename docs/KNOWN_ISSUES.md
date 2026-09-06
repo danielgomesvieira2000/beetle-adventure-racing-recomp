@@ -116,8 +116,10 @@ speed, and the HUD is drawn as RT64 draws it by default (2D rectangles stretched
 orthographic triangles centred). Daniel verified this state and asked to return to it after the
 anchoring work turned out to glitch races. **Nothing from the anchoring work is compiled in.**
 
-**What was built (branch `wip/hud-anchoring`, commit `55e93af`; the raw experiments that followed
-are on `wip/island-experiments`).** A host-side F3DEX2 display-list rewriter, `src/main/dlrewrite.cpp`
+**What was built** (the `wip/hud-anchoring` branch, commit `55e93af`, with the raw experiments that
+followed on `wip/island-experiments`; both branches were removed from this repository when it was
+published, and survive only on the fork it came from,
+[danielgomesvieira2000/BeetleRecomp](https://github.com/danielgomesvieira2000/BeetleRecomp)).** A host-side F3DEX2 display-list rewriter, `src/main/dlrewrite.cpp`
 plus `dlrewrite.h`, modelled on `wave-race-64-recomp/src/dlrewrite.cpp`. It wraps the renderer
 context (`bar::dlrewrite::wrap(...)` around both `create_render_context` calls in `src/main/main.cpp`),
 copies each root display list the game submits into a scratch region at `0x80C00000` (above the 8 MB
