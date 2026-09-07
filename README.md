@@ -4,12 +4,17 @@ A work-in-progress **native PC port of _Beetle Adventure Racing!_ (N64, USA)** b
 **static recompilation** with the [N64Recomp][N64Recomp] toolchain — the same approach
 behind [Zelda 64: Recompiled](https://github.com/Zelda64Recomp/Zelda64Recomp).
 
-> **Status (2026-07-01): playable.** Boots through the intros and menus into races and renders at
-> 60 fps, with keyboard + gamepad input and audio working. Ships an in-app launcher / settings /
-> cheats / pause menu (RmlUi over RT64), internal-resolution scaling (defaults to display-native),
-> MSAA + a VI "divot" seam filter, and high-FPS interpolation (phase 1). A handful of polish items
-> remain — see **[docs/TODO.md](docs/TODO.md)** for the roadmap and **[docs/STATUS.md](docs/STATUS.md)**
-> to resume.
+> **Status (2026-09-07): playable.** Boots through the intros and menus into races and renders at
+> 60 fps, with keyboard + gamepad input and audio working. Ships the
+> **[RecompFrontend](https://github.com/N64Recomp/RecompFrontend)** launcher / settings / input
+> binding / pause menu, widescreen with a HUD that expands with the aspect ratio, a selectable
+> 1x / 2x / 4x draw distance, internal-resolution scaling (defaults to display-native), MSAA + a VI
+> "divot" seam filter, and high-FPS interpolation (phase 1). A handful of polish items remain — see
+> **[docs/TODO.md](docs/TODO.md)** for the roadmap and **[docs/STATUS.md](docs/STATUS.md)** to
+> resume.
+>
+> A prebuilt Windows x64 build is on the
+> **[releases page](https://github.com/danielgomesvieira2000/beetle-adventure-racing-recomp/releases)**.
 
 > **No game data is included.** You must supply your own legally-dumped USA ROM
 > (SHA-1 `e5ab4d226c08d22f68a2edcc48870203e67454b8`). No ROM, assets, or other copyrighted
@@ -124,7 +129,7 @@ BeetleRecomp/
 ├── src/
 │   ├── main/              # native host: RT64 render context, input, audio, overlay bridge, config
 │   ├── game/              # game-facing config schema (graphics.json)
-│   └── ui/                # in-app RmlUi launcher / settings / cheats / pause menu + renderer
+│   └── frontend/          # RecompFrontend glue: launcher menus, config tabs, input forwarding
 ├── patches/               # C compiled to MIPS that overrides/hooks game functions
 ├── include/               # port headers
 ├── rsp/                   # RSP microcode glue
@@ -136,9 +141,8 @@ BeetleRecomp/
     ├── N64Recomp                  # the static recompiler (MIPS → C)
     ├── N64ModernRuntime           # librecomp (CPU) + ultramodern (OS/audio/input)   [bryankruman fork]
     ├── rt64                       # RT64 renderer (D3D12 / Vulkan / Metal)            [bryankruman fork]
-    ├── RmlUi                      # HTML/CSS UI toolkit for the in-app menus
-    ├── lunasvg                    # SVG rasterizer (RmlUi dependency)
-    └── freetype-windows-binaries  # prebuilt Freetype for RmlUi text (Windows)
+    └── RecompFrontend             # launcher / settings / input UI (recompui + recompinput)
+                                   #   -> pulls RmlUi, lunasvg and freetype as its own submodules
 ```
 
 ## Quickstart
