@@ -362,6 +362,18 @@ state 2, the measured loop rate is 33-38 SI polls/sec during the attract against
 Applied in `src/main/os_unimpl_stubs.cpp` for `currentGameState == 2` only. `BAR_ATTRACT_HZ` overrides
 the target; 60 disables it.
 
+**It does not actually fix the speed.** Daniel tested it: the audio is healthy again, but the demo is
+back to running fast. The reason is visible in the code above -- `_uvScDoneGfx` defers the *buffer
+swap*, not the simulation. The game keeps stepping its logic at full rate and simply presents fewer
+frames, so the cars still drive at 60 Hz speeds. That is also why the audio is fine, and it is the
+same distinction the VI divider got right for the wrong price: the divider slowed the loop (fixing
+speed, wrecking audio), the limiter slows presentation (keeping audio, not fixing speed).
+
+So the state of this issue is: **neither lever found so far slows the simulation alone.** What is
+needed is whatever advances the demo's physics per frame -- the replay playback step -- rather than
+either the swap rate or the retrace rate. Parked here at Daniel's request; the limiter is left in
+place because it is harmless and is the correct pacing mechanism should the simulation side be found.
+
 **Why 30 is believed to be the right target:** an actual race in this port runs its loop at ~30/s
 while the attract runs at ~60/s (the `BAR_FPS` measurement recorded above). The demo is a race, so
 the game's own race rate is the reference. That reasoning has not been checked against hardware, and
