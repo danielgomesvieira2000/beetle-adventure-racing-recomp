@@ -313,6 +313,34 @@ The cap is therefore **on by default for state 2 only** (`ultramodern::set_vi_di
 `src/main/os_unimpl_stubs.cpp`). Menus, races and the front end keep the full 60.
 `BAR_ATTRACT_HZ=60` disables it; `BAR_VI_DIVIDER=<n>` forces a divider in every state.
 
+**The cap fixes the speed but breaks the audio (7 Sep 2026).** Daniel confirmed the capped build
+runs every part of the sequence at the correct speed -- and that the sound is then slowed and
+glitched. Measured during the attract, the host audio queue:
+
+| | queue floor | queue ceiling | `audio LOW` warnings |
+|---|---|---|---|
+| Capped to 30 Hz | **64** | 1088 | 1 |
+| Uncapped | 448-480 | ~1568 | 0 |
+
+So the queue runs at about half the headroom and dips to nearly empty. Starvation explains the
+glitching, but not the *slowing*; that comes from the same root cause. BAR's audio engine -- buffer
+generation and the music sequencer's tempo -- is advanced by the game loop, which is exactly what the
+divider halves, so the music plays at half tempo and the buffers arrive half as often.
+
+**This makes the VI divider the wrong lever in principle.** It cannot be tuned or buffered out of the
+problem: a sequencer stepping at half rate is half-tempo no matter how deep the queue is. Whatever
+fixes this has to slow the demo's simulation *without* slowing the loop that drives audio. Two
+candidates, neither tried yet:
+
+1. Halve the demo's physics/replay timestep while the loop stays at 60. This is what the game's own
+   race does -- a race runs its simulation correctly while its audio is fine -- so there is likely an
+   internal frame-skip or timestep the attract is not getting. `D_8001F7C0`, the "whole-frame
+   divider" noted above as reading 0, is worth re-examining as that mechanism rather than as a cause.
+2. Find why the attract's gfx task completes fast enough to run every field here when it takes two on
+   console. If the game reaches 30 Hz on hardware because the RCP cannot finish a heavy scene in one
+   field, then the honest fix is task pacing, and audio -- driven off the retrace, not the task --
+   keeps its full rate for free.
+
 **Why 30 is believed to be the right target:** an actual race in this port runs its loop at ~30/s
 while the attract runs at ~60/s (the `BAR_FPS` measurement recorded above). The demo is a race, so
 the game's own race rate is the reference. That reasoning has not been checked against hardware, and
