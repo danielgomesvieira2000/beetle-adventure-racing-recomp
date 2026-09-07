@@ -1,0 +1,17 @@
+// icons/app.rc — Windows resource script: the application icon.
+//
+// The icon is deliberately resource ID 1, and that number is load-bearing twice over:
+//
+//   * Explorer and the shell display the icon with the LOWEST numeric ID as the file's icon, so 1
+//     guarantees this is the one shown on the executable.
+//   * SDL2 registers its window class with LoadImage(hInstance, MAKEINTRESOURCE(1), IMAGE_ICON, ...)
+//     — "use the first icon as a default icon, like in Explorer". So this same entry becomes the
+//     game window's title-bar, Alt-Tab and taskbar icon at no extra cost. Renumber it and the
+//     window silently falls back to the generic default while the file icon still looks right.
+//
+// app.ico is generated from assets/ui/icons/Icon.png by tools/make-icon.py; regenerate it there
+// rather than editing the binary. The path below is resolved relative to this .rc file.
+
+#define IDI_APP_ICON 1
+
+IDI_APP_ICON ICON "app.ico"

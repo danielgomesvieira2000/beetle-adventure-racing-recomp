@@ -231,7 +231,44 @@ if (WIN32)
         LINK_FLAGS_DEBUG          "/SUBSYSTEM:CONSOLE"
         LINK_FLAGS_RELEASE        "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
     target_link_libraries(beetle-adventure-racing-recomp PRIVATE SDL2 Winmm.lib Dbghelp.lib)   # Winmm: timeBeginPeriod; Dbghelp: crash backtrace
-    # TODO(BAR): app icon -> target_sources(beetle-adventure-racing-recomp PRIVATE icons/app.rc)
+
+    # App icon. RC is not in project()'s language list because it only exists on Windows, so enable
+    # it here. See icons/app.rc for why the icon is resource ID 1 — it is what makes SDL pick it up
+    # for the game window as well as Explorer for the executable.
+    #
+    # Getting a .rc through Ninja + clang-cl takes three corrections; each was an actual build
+    # failure, in this order.
+    #
+    # 1. The resource compiler must be llvm-rc, not the Windows SDK's rc.exe. CMake compiles a .rc
+    #    in two steps here -- preprocess with clang-cl, then run the resource compiler on the
+    #    result -- and clang-cl's -E output carries GNU line markers ('# 1 "app.rc"'). rc.exe runs
+    #    its own preprocessor over that and rejects every one of them with "RC2019: expected
+    #    preprocessor command, found '1'". llvm-rc accepts them, which is what that two-step path
+    #    was built for. It ships in the same LLVM bin directory as the clang-cl this project
+    #    already requires, so hint the search there before falling back to PATH. The cache entry is
+    #    forced because CMake caches whatever it found on a previous configure.
+    #
+    # 2. CMAKE_DEPFILE_FLAGS_RC must be cleared. CMake appends clang's depfile flags
+    #    ("-clang:-MD -clang:-MF -clang:<dep>") to the *shared* RC flags, so they reach the resource
+    #    compiler too -- rc.exe reads the leading -c as its code-page switch and dies with "RC1205:
+    #    invalid code page". Clearing them loses automatic dependency scanning, hence the explicit
+    #    OBJECT_DEPENDS on app.ico below; app.rc references nothing else.
+    #
+    # 3. icons/ has to be on the resource include path. The preprocessed .rc is written into the
+    #    build tree, so the ICON statement's relative "app.ico" no longer resolves next to it and
+    #    the resource compiler fails with "file not found : app.ico".
+    get_filename_component(_beetle_llvm_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    find_program(BEETLE_RC_COMPILER NAMES llvm-rc HINTS "${_beetle_llvm_bin}")
+    if (BEETLE_RC_COMPILER)
+        set(CMAKE_RC_COMPILER "${BEETLE_RC_COMPILER}" CACHE FILEPATH "Resource compiler" FORCE)
+    endif()
+    set(CMAKE_DEPFILE_FLAGS_RC "")
+    enable_language(RC)
+
+    target_sources(beetle-adventure-racing-recomp PRIVATE ${CMAKE_SOURCE_DIR}/icons/app.rc)
+    set_source_files_properties(${CMAKE_SOURCE_DIR}/icons/app.rc PROPERTIES
+        INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/icons"
+        OBJECT_DEPENDS      "${CMAKE_SOURCE_DIR}/icons/app.ico")
 endif()
 
 # ---- Linux: RT64 -> Vulkan ----
