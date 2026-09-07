@@ -328,18 +328,39 @@ generation and the music sequencer's tempo -- is advanced by the game loop, whic
 divider halves, so the music plays at half tempo and the buffers arrive half as often.
 
 **This makes the VI divider the wrong lever in principle.** It cannot be tuned or buffered out of the
-problem: a sequencer stepping at half rate is half-tempo no matter how deep the queue is. Whatever
-fixes this has to slow the demo's simulation *without* slowing the loop that drives audio. Two
-candidates, neither tried yet:
+problem: a sequencer stepping at half rate is half-tempo no matter how deep the queue is. The divider
+was removed again (reverted in the N64ModernRuntime fork) once the right lever was found.
 
-1. Halve the demo's physics/replay timestep while the loop stays at 60. This is what the game's own
-   race does -- a race runs its simulation correctly while its audio is fine -- so there is likely an
-   internal frame-skip or timestep the attract is not getting. `D_8001F7C0`, the "whole-frame
-   divider" noted above as reading 0, is worth re-examining as that mechanism rather than as a cause.
-2. Find why the attract's gfx task completes fast enough to run every field here when it takes two on
-   console. If the game reaches 30 Hz on hardware because the RCP cannot finish a heavy scene in one
-   field, then the honest fix is task pacing, and audio -- driven off the retrace, not the task --
-   keeps its full rate for free.
+### Fixed: the game's own frame limiter, D_8001F7C0
+
+`D_8001F7C0` -- dismissed earlier in this document as a *cause* because it reads 0 -- turns out to be
+the *mechanism*. It is BAR's own minimum frame length, and `lib/bar-decomp/src/sched.c` shows exactly
+how it works. In `_uvScDoneGfx`, when the gfx task completes:
+
+```c
+if (D_8001F7C4 < D_8001F7C0) { D_8002F250 = (D_8001F7C0 - D_8001F7C4) + 1; }  // defer the swap
+else                         { D_8002F250 = 1; osViSwapBuffer(...); }         // swap now
+```
+
+`D_8001F7C4` counts retraces since the last frame was released; the countdown `D_8002F250` releases
+the frame and resets it. It ships as 0, so nothing is ever deferred and the sequence advances as fast
+as our tasks complete -- 60 Hz, where the console's heavier RCP gave it 30.
+
+Two things make this the right lever where the VI divider was not:
+
+* **It gates the gfx path only.** `_uvScDoneAud` is a separate completion path, so the audio task,
+  its buffer generation and the music sequencer's tempo all keep full rate. Measured during the
+  attract with the limiter engaged: queue floor 416-480 and **zero** `audio LOW` warnings, matching
+  the uncapped baseline rather than the divider's starved floor of 64.
+* **It is the game's own knob**, not something imposed from outside the simulation.
+
+**Mind the `+ 1`.** The field is not a frame count, it is one less than the frame length: a frame
+lasts `D_8001F7C0 + 1` fields, which is why the stock 0 yields 60 Hz rather than stalling. Writing 2
+gives three fields (20 Hz) and was reported as visibly too slow; **30 Hz is 1**. With 1 written during
+state 2, the measured loop rate is 33-38 SI polls/sec during the attract against 52-59 in the menu.
+
+Applied in `src/main/os_unimpl_stubs.cpp` for `currentGameState == 2` only. `BAR_ATTRACT_HZ` overrides
+the target; 60 disables it.
 
 **Why 30 is believed to be the right target:** an actual race in this port runs its loop at ~30/s
 while the attract runs at ~60/s (the `BAR_FPS` measurement recorded above). The demo is a race, so

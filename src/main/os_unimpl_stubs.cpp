@@ -323,54 +323,54 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
 
         bar_rt64_set_hud_anchor(((st == 5) && sawSetup && ((phase == 0) || (phase == 3))) ? 1 : 0);
 
-        // Attract/intro frame cap.
+        // Attract/intro frame cap -- using the game's OWN frame limiter.
         //
-        // currentGameState 2 is the boot attract sequence: a canned replay of a race, driven by the
-        // game's own race simulation. In this port the demo cars drive too fast and consequently miss
-        // their scripted events -- the sequence loses sync with itself rather than merely looking
-        // quick. That is the signature of a per-frame-stepped simulation being handed twice the
-        // frames it was authored for: an actual race in this port runs its loop at ~30/s, while the
-        // attract runs at ~60/s (measured previously, docs/KNOWN_ISSUES.md).
+        // currentGameState 2 is the boot attract sequence: a canned replay run through the game's
+        // race simulation. Here its cars drive at double speed and miss their scripted events, which
+        // is what a per-frame-stepped simulation does when handed twice the frames it was authored
+        // for.
         //
-        // So halve the rate at which the game is given VI retraces while state 2 is on screen, which
-        // steps the demo's simulation at 30 Hz, and restore 60 everywhere else -- menus, races and the
-        // front end are untouched. This changes how often the GAME steps, not how often the host
-        // presents, so it is not a drop to 30 fps of output.
+        // D_8001F7C0 is BAR's own minimum frame length, in VI fields, and it is the right lever. In
+        // the scheduler (lib/bar-decomp/src/sched.c), _uvScDoneGfx defers the buffer swap when fewer
+        // than D_8001F7C0 retraces have elapsed since the last frame was released:
         //
-        // Two measurements bound what this does and does not fix:
+        //     if (D_8001F7C4 < D_8001F7C0) { D_8002F250 = (D_8001F7C0 - D_8001F7C4) + 1; }
+        //     else                         { D_8002F250 = 1; osViSwapBuffer(...); }
         //
-        //   * Car speed: captured at the same wall-clock offset into the attract, the demo car is at
-        //     visibly different points on the lap with the cap on versus off -- it drives slower, as
-        //     intended.
+        // with D_8001F7C4 counting retraces and the countdown releasing the frame. It ships as 0, so
+        // nothing is ever deferred and the sequence advances as fast as our tasks complete -- 60 Hz,
+        // where the console's heavier RCP gave it 30.
         //
-        //   * Sequence length: unchanged. State 2 lasts 72.45 s stock, 72.76 s capped, and 72.46 s
-        //     with the UV timeline delta halved. The attract's LENGTH is on a different clock from
-        //     its motion -- the divider only changes how often the game is handed a retrace, while
-        //     total_vis, the VI registers and the wall clock keep advancing at 60. So the demo now
-        //     drives at the right speed but still gets cut off after the same number of real seconds,
-        //     covering less of the lap than before.
+        // Mind the trailing "+ 1": the field is not a field COUNT, it is one less than the frame
+        // length. A frame lasts D_8001F7C0 + 1 fields, which is why the stock 0 gives 60 Hz rather
+        // than stalling. So 30 Hz is 1, not 2 -- writing 2 yields three fields, i.e. 20 Hz, which is
+        // visibly too slow. Hence the -1 below.
         //
-        // BAR_ATTRACT_HZ overrides the target (60 disables the cap); BAR_VI_DIVIDER=<n> forces a
-        // divider in every state.
+        // Critically this gates the GFX path only. _uvScDoneAud is a separate completion path, so the
+        // audio task, its buffer generation and the music sequencer's tempo all keep running at full
+        // rate. That is the whole reason this is preferred over dividing the VI retrace itself
+        // (ultramodern::set_vi_divider), which slowed the game loop as a whole and therefore halved
+        // the music's tempo and starved the audio queue -- see docs/KNOWN_ISSUES.md.
+        //
+        // BAR_ATTRACT_HZ overrides the target (60 disables the cap).
         {
-            static const int forced = [] {
-                const char* e = std::getenv("BAR_VI_DIVIDER");
-                return (e != nullptr) ? std::atoi(e) : 0;
-            }();
-            static const int attract_div = [] {
+            static const int attract_frames = [] {
                 const char* e = std::getenv("BAR_ATTRACT_HZ");
-                const int hz = (e != nullptr) ? std::atoi(e) : 30;   // 60 == no cap
-                return (hz > 0 && hz < 60) ? (60 / hz) : 1;
+                const int hz = (e != nullptr) ? std::atoi(e) : 30;
+                // Frame length in fields is the stored value + 1, so subtract one; 0 is stock 60 Hz.
+                return (hz > 0 && hz < 60) ? ((60 / hz) - 1) : 0;
             }();
 
-            const int want = (forced > 0) ? forced : ((st == 2) ? attract_div : 1);
+            // Only write on a change: the value is the game's, and there is no reason to fight it
+            // every frame.
+            const int want = (st == 2) ? attract_frames : 0;
             static int applied = -1;
             if (want != applied) {
                 applied = want;
-                ultramodern::set_vi_divider(want);
+                MEM_W(0, (int64_t)(int32_t)0x8001F7C0) = want;
                 if (std::getenv("BAR_DBG_STATE") != nullptr) {
-                    std::fprintf(stderr, "[beetle-adventure-racing-recomp] VI divider -> %d "
-                                         "(game loop %d Hz) in state %d\n", want, 60 / want, st);
+                    std::fprintf(stderr, "[beetle-adventure-racing-recomp] frame limiter D_8001F7C0 -> %d "
+                                         "field(s) in state %d\n", want, st);
                 }
             }
         }
