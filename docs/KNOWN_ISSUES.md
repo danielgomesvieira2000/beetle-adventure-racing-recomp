@@ -275,6 +275,44 @@ The boot sequence plays noticeably faster than a reference emulator running the 
 | SI completion pacing (`requeue_si`) | **Refuted.** `BAR_REQUEUE_SI=1` restores stock re-queueing: the menu becomes choppy but the animation speed is unchanged — the signature of correct delta-timing. |
 | PAL/NTSC confusion (PAL runs ~17% slower) | **Refuted** by the user's side-by-side against the same USA ROM. |
 
+### Ruled out: the frame rate itself, and the UV timeline (7 Sep 2026)
+
+Daniel asked for the attract sequence to be capped at 30 Hz, on the theory that a game loop handed
+60 frames where the console's retrace request gave it 30 would run frame-counted content at double
+speed. `ultramodern::set_vi_divider()` was added to test it: it delivers VI retrace messages to the
+game once every N fields, so the game's own loop -- which blocks on those messages -- runs at 60/N.
+
+The attract sequence (`currentGameState` 2) was then timed end to end from `BAR_DBG_STATE`, headless,
+using the autoplay recipe in docs/HEADLESS_TESTING.md:
+
+| Configuration | Attract duration |
+|---|---|
+| Stock | **72.45 s** |
+| Game loop capped to 30 Hz (`BAR_ATTRACT_HZ=30`) | **72.76 s** (+0.4%) |
+| UV timeline delta halved (`BAR_TIME_SCALE=0.5`) | **72.46 s** (+0.01%) |
+
+**Neither lever moves it.** The attract's length is paced by neither the game's frame rate nor the UV
+timeline's delta, which rules out both of the mechanisms this investigation had been circling.
+
+Why the frame cap changes nothing is the useful part: the divider only changes how often the *game*
+is handed a retrace message. `total_vis`, the VI registers and the host's present rate all keep
+advancing at 60, so any timer that reads the VI count or the wall clock is untouched -- and that is
+evidently what times the attract. The next probe should be the game's real-time source
+(`uvClkGetSec` / `osGetTime` / the VI counter), not the frame loop and not the gfx-manager delta.
+
+Note this also sharpens the earlier `BAR_TIME_SCALE` result. Scaling the delta visibly changes the
+attract's *motion* but, as measured above, not the segment's *duration* -- so the demo's animation
+and the timer that ends it are on two different clocks.
+
+The divider is kept (`ultramodern::set_vi_divider`, gated in `src/main/os_unimpl_stubs.cpp`) because
+it is the only way to run the game loop at a divided rate, but it **defaults to off**: at 30 Hz the
+attract is visibly choppier and, per the numbers, no slower. `BAR_ATTRACT_HZ=30` re-enables it for
+state 2; `BAR_VI_DIVIDER=<n>` forces it in every state.
+
+**Still missing: a reference number.** Nothing here establishes that 72.45 s is wrong. Timing the
+same attract on the reference emulator would say how much too fast it actually is -- or whether the
+attract is fine and the fast part is the logo/legal screens, which is what the lead below argues.
+
 ### The strongest remaining lead
 
 The UV timeline (`uvtseq_rom.c:243`) advances as `step -= rate * func_uvgfxmgr_rom_00401004()`,

@@ -322,6 +322,54 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
         }
 
         bar_rt64_set_hud_anchor(((st == 5) && sawSetup && ((phase == 0) || (phase == 3))) ? 1 : 0);
+
+        // Attract/intro frame cap -- OFF by default, because it was measured not to do anything.
+        //
+        // currentGameState 2 is the boot attract sequence (the demo car under the title), which plays
+        // faster here than on console. The obvious theory was that the loop runs at 60 where the
+        // console gives it 30, so content that counts its own frames advances twice as fast. Halving
+        // the rate at which the game is handed VI retraces tests that directly, and it is what this
+        // block does when BAR_ATTRACT_HZ is set below 60.
+        //
+        // Measured, headless, timing state 2 from BAR_DBG_STATE (autoplay recipe from
+        // docs/HEADLESS_TESTING.md):
+        //
+        //     stock                            72.45 s
+        //     game loop capped to 30 Hz        72.76 s   (+0.4%)
+        //     UV timeline delta x0.5           72.46 s   (+0.01%)
+        //
+        // So the attract's length is paced by NEITHER the game's frame rate NOR the UV timeline's
+        // delta. The reason the 30 Hz cap changes nothing is worth stating: the divider only changes
+        // how often the GAME is given a retrace message. total_vis and the VI registers keep
+        // advancing at 60, so any timer reading the VI count or wall clock is untouched -- and that
+        // is evidently what times the attract. Whatever makes it feel fast lives there, not here.
+        //
+        // The mechanism is kept because it is the only way to run the game loop at a divided rate and
+        // it cost nothing to leave in, but it defaults to off: at 30 Hz the attract is visibly
+        // choppier and, per the numbers above, no slower. BAR_ATTRACT_HZ=30 re-enables it for state 2;
+        // BAR_VI_DIVIDER=<n> forces a divider in every state. See docs/KNOWN_ISSUES.md.
+        {
+            static const int forced = [] {
+                const char* e = std::getenv("BAR_VI_DIVIDER");
+                return (e != nullptr) ? std::atoi(e) : 0;
+            }();
+            static const int attract_div = [] {
+                const char* e = std::getenv("BAR_ATTRACT_HZ");
+                const int hz = (e != nullptr) ? std::atoi(e) : 60;   // 60 == no cap
+                return (hz > 0 && hz < 60) ? (60 / hz) : 1;
+            }();
+
+            const int want = (forced > 0) ? forced : ((st == 2) ? attract_div : 1);
+            static int applied = -1;
+            if (want != applied) {
+                applied = want;
+                ultramodern::set_vi_divider(want);
+                if (std::getenv("BAR_DBG_STATE") != nullptr) {
+                    std::fprintf(stderr, "[beetle-adventure-racing-recomp] VI divider -> %d "
+                                         "(game loop %d Hz) in state %d\n", want, 60 / want, st);
+                }
+            }
+        }
     }
     // R6 tooling (env-gated BAR_DBG_STATE): log currentGameState (gGameSettings+0xA4) transitions so a
     // BAR_AUTOPLAY script can be tuned/verified headlessly (boot -> logos -> intro -> menu=0xE -> race=2).
