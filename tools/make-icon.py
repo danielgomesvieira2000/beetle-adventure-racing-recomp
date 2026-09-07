@@ -125,8 +125,8 @@ def square_with_margin(im: Image.Image) -> Image.Image:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("source", nargs="?", default=REPO_ROOT / "assets/ui/icons/Icon.png",
-                    type=Path, help="source PNG (default: assets/ui/icons/Icon.png)")
+    ap.add_argument("source", nargs="?", default=REPO_ROOT / "icons/Icon.png",
+                    type=Path, help="source PNG (default: icons/Icon.png)")
     ap.add_argument("-o", "--output", default=REPO_ROOT / "icons/app.ico", type=Path,
                     help="output .ico (default: icons/app.ico)")
     args = ap.parse_args()

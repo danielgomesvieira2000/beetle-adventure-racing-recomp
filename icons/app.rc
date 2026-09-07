@@ -9,7 +9,7 @@
 //     game window's title-bar, Alt-Tab and taskbar icon at no extra cost. Renumber it and the
 //     window silently falls back to the generic default while the file icon still looks right.
 //
-// app.ico is generated from assets/ui/icons/Icon.png by tools/make-icon.py; regenerate it there
+// app.ico is generated from Icon.png (beside this file) by tools/make-icon.py; regenerate it there
 // rather than editing the binary. The path below is resolved relative to this .rc file.
 
 #define IDI_APP_ICON 1
