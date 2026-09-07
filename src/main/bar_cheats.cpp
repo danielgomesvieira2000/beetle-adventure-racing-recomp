@@ -75,7 +75,7 @@ void apply_frame(uint8_t* rdram) {
         static bool logged = false;
         if (!logged) {
             logged = true;
-            std::fprintf(stderr, "[BeetleRecomp][cheats] applying:");
+            std::fprintf(stderr, "[beetle-adventure-racing-recomp][cheats] applying:");
             for (int i = 0; i < (int)Id::Count; i++) if (on((Id)i)) std::fprintf(stderr, " %s", kInfo[i].id);
             std::fprintf(stderr, "\n");
             std::fflush(stderr);

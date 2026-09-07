@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cdb-run.sh — launch BeetleRecomp under cdb (console WinDbg) with the NT debug heap DISABLED.
+# cdb-run.sh — launch beetle-adventure-racing-recomp under cdb (console WinDbg) with the NT debug heap DISABLED.
 #
 # WHY -hd IS MANDATORY (do not remove it):
 #   When a process is *created by* a debugger, Windows silently switches its heap into the NT debug
@@ -12,7 +12,7 @@
 #
 # Usage:   tools/cdb-run.sh [extra cdb args...]
 # Env overrides:
-#   BAR_BUILD  build dir holding BeetleRecomp.exe + .pdb   (default: build-cmake, relative to repo root)
+#   BAR_BUILD  build dir holding beetle-adventure-racing-recomp.exe + .pdb   (default: build-cmake, relative to repo root)
 #   BAR_CDB    path to cdb.exe                             (default: newest Microsoft.WinDbg package)
 #   BAR_LOG    cdb command log                             (default: <build>/cdb.log)
 #   BAR_DUMP   crash minidump path                         (default: <build>/bar_crash.dmp)
@@ -26,8 +26,8 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 build_dir="${BAR_BUILD:-$repo_root/build-cmake}"
 [ -d "$build_dir" ] || { echo "cdb-run: build dir not found: $build_dir" >&2; exit 1; }
 build_win="$(cygpath -m "$build_dir")"          # drive-letter path cdb understands
-exe_win="$build_win/BeetleRecomp.exe"
-[ -f "$build_dir/BeetleRecomp.exe" ] || { echo "cdb-run: BeetleRecomp.exe not built in $build_dir" >&2; exit 1; }
+exe_win="$build_win/beetle-adventure-racing-recomp.exe"
+[ -f "$build_dir/beetle-adventure-racing-recomp.exe" ] || { echo "cdb-run: beetle-adventure-racing-recomp.exe not built in $build_dir" >&2; exit 1; }
 
 cdb="${BAR_CDB:-}"
 if [ -z "$cdb" ]; then

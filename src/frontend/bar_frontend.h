@@ -1,6 +1,6 @@
 #pragma once
 
-// BeetleRecomp <-> RecompFrontend glue.
+// beetle-adventure-racing-recomp <-> RecompFrontend glue.
 //
 // RecompFrontend (recompui + recompinput) is the launcher/menu and input layer extracted from
 // Zelda 64: Recompiled. It replaces the bespoke src/ui menu; see docs/PINNED_REVISIONS.md for the

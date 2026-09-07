@@ -4,7 +4,7 @@ Reproducibility record for this fork. Every dependency below is pinned so a futu
 checkout can rebuild the exact binary this tree produces. Update this file whenever a
 submodule pointer or a toolchain version changes, in the same commit as the change.
 
-_Baseline established: 2026-09-04 · Fork of [bryankruman/BeetleRecomp](https://github.com/bryankruman/BeetleRecomp)_
+_Baseline established: 2026-09-04 · Fork of [bryankruman/beetle-adventure-racing-recomp](https://github.com/bryankruman/beetle-adventure-racing-recomp)_
 
 ## Game ROM
 
@@ -105,7 +105,7 @@ Each step depends on the one before it.
    — must print `build/beetleadventurerac.us.z64: OK`
 4. (WSL) `make recomp` → `build/recomp.elf`
 5. `scripts/fetch-elf.sh` → `elf/recomp.elf`
-6. `./N64Recomp BeetleRecomp.toml` → `RecompiledFuncs/*.c`
+6. `./N64Recomp beetle-adventure-racing-recomp.toml` → `RecompiledFuncs/*.c`
 7. `scripts/fix-recompiled.sh` — **mandatory**, and re-run after every regeneration
 8. `cmake -S . -B build-cmake -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release`
 9. `cmake --build build-cmake -j`
@@ -142,7 +142,7 @@ Three integration constraints, each of which broke the build once:
 3. **SDL2 must be acquired before `add_subdirectory(lib/RecompFrontend)`.** Both frontend libraries
    `#include "SDL.h"` and read `sdl2_SOURCE_DIR` / `SDL2_INCLUDE_DIRS` at configure time; their own
    CMake flags this as a standalone-build limitation. Our SDL2 FetchContent originally sat beside
-   the `BeetleRecomp` target, far below, so the frontend configured with an empty include path
+   the `beetle-adventure-racing-recomp` target, far below, so the frontend configured with an empty include path
    (visible as a bare `-I\include` on the command line) and failed to find `SDL.h`.
 
 ### ROM verification

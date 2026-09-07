@@ -24,7 +24,7 @@ Add to this rather than rediscovering it. Every experiment should leave a fact b
     BAR_SHOTS="6100:race.png" \
     BAR_AUTOPLAY="250:0 30:8000 1120:0 20:1000 1480:0 20:8000 280:0 20:8000 280:0 20:8000 \
                   280:0 20:8000 280:0 20:8000 280:0 20:8000 280:0 20:8000 200:0 20:8000 1200:0" \
-    ./BeetleRecomp.exe
+    ./beetle-adventure-racing-recomp.exe
   ```
 
   That is: A on the Controller Pak prompt, START to skip the intro movie, then six A presses through

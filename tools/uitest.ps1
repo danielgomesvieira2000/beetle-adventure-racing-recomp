@@ -1,4 +1,4 @@
-# uitest.ps1 — robustly foreground the BeetleRecomp GAME window (found by title, not MainWindowHandle),
+# uitest.ps1 — robustly foreground the beetle-adventure-racing-recomp GAME window (found by title, not MainWindowHandle),
 # synthesize a left click at a fractional position, then capture a screenshot. Targets the SDL game
 # window specifically and uses the AttachThreadInput trick to beat the Win32 foreground lock.
 # Usage: powershell -ExecutionPolicy Bypass -File tools/uitest.ps1 -Fx 0.5 -Fy 0.467 -Out shot.png

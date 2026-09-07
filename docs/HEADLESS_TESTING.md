@@ -52,7 +52,7 @@ already produced one round of confident, wrong conclusions. Wait on something th
 
 ```
 BAR_SKIP_LAUNCHER=1 BAR_SHOTS="510:menu.png" BAR_AUTOPLAY="120:0 30:8000 150:0 30:0800 150:0 30:8000 700:0" \
-  ./BeetleRecomp.exe    # -> menu.png is the main menu, no window needed
+  ./beetle-adventure-racing-recomp.exe    # -> menu.png is the main menu, no window needed
 ```
 (A prior `tools/shot.ps1` did a window-manager grab — **superseded**; don't use it.)
 
@@ -66,7 +66,7 @@ freeze mid-roll. RT64 counts presents itself (`bar_rt64_start_burst` in the RT64
 ```
 mkdir -p roll
 BAR_SKIP_LAUNCHER=1 BAR_SHOT_BURST="900:roll:60" \
-  BAR_AUTOPLAY="120:0 30:8000 150:0 30:0800 150:0 30:8000 400:0 20:0400 300:0" ./BeetleRecomp.exe &
+  BAR_AUTOPLAY="120:0 30:8000 150:0 30:0800 150:0 30:8000 400:0 20:0400 300:0" ./beetle-adventure-racing-recomp.exe &
 #   ...reach menu, wait, press Down (film-roll) ~fc910 -> roll/f0000..f0059 = the roll frames
 ```
 
@@ -90,7 +90,7 @@ BAR_SKIP_LAUNCHER=1 BAR_SHOT_BURST="900:roll:60" \
 ```
 cd build-cmake
 RT64_SHOT_TRIGGER=shot_req RT64_SHOT_OUT=shot.png BAR_SKIP_LAUNCHER=1 \
-  BAR_AUTOPLAY="120:0 30:8000 150:0 30:0800 150:0 30:8000 700:0" ./BeetleRecomp.exe &
+  BAR_AUTOPLAY="120:0 30:8000 150:0 30:0800 150:0 30:8000 700:0" ./beetle-adventure-racing-recomp.exe &
 sleep 26; touch shot_req; sleep 2.5   # -> shot.png is the main menu
 ```
 
@@ -98,7 +98,7 @@ sleep 26; touch shot_req; sleep 2.5   # -> shot.png is the main menu
 
 Launch the game under the console debugger with **`tools/cdb-run.sh`**. It catches a fatal
 (second-chance) access violation, dumps registers + all thread stacks (with line numbers if
-`BeetleRecomp.pdb` is next to the exe), and writes a full minidump — while passing first-chance
+`beetle-adventure-racing-recomp.pdb` is next to the exe), and writes a full minidump — while passing first-chance
 exceptions through so normal play is uninterrupted.
 
 ```sh

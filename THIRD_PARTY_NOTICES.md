@@ -1,6 +1,6 @@
 # Third-Party Notices & License Analysis
 
-BeetleRecomp itself is licensed **AGPL-3.0** (see `COPYING`), inherited from the BeetleDecomp
+beetle-adventure-racing-recomp itself is licensed **AGPL-3.0** (see `COPYING`), inherited from the BeetleDecomp
 symbol/function data it derives from. Vendored dependencies retain their own licenses.
 
 ## Dependency licenses

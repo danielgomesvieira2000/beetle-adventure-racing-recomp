@@ -1,4 +1,4 @@
-// src/main/rt64_render_context.cpp — RT64-backed RendererContext for BeetleRecomp.
+// src/main/rt64_render_context.cpp — RT64-backed RendererContext for beetle-adventure-racing-recomp.
 //
 // Adapted from Zelda64Recompiled (src/main/rt64_render_context.cpp, MIT License), reduced to the
 // core renderer lifecycle (no mods / HD texture packs / UI hooks) and retargeted to this repo's
@@ -289,7 +289,7 @@ RT64Context::RT64Context(uint8_t* rdram, ultramodern::renderer::WindowHandle win
                 reason = "no compatible GPU/Vulkan device was found (install or update your GPU's Vulkan driver; verify with vulkaninfo)"; break;
             default: break;
         }
-        std::fprintf(stderr, "[BeetleRecomp] RT64 setup failed: %s (result %d)\n", reason, static_cast<int>(setup_result));
+        std::fprintf(stderr, "[beetle-adventure-racing-recomp] RT64 setup failed: %s (result %d)\n", reason, static_cast<int>(setup_result));
         app = nullptr;
         return;
     }
@@ -304,7 +304,7 @@ RT64Context::RT64Context(uint8_t* rdram, ultramodern::renderer::WindowHandle win
     m_live_res_mult   = app->userConfig.resolutionMultiplier;
     m_live_down_mult  = app->userConfig.downsampleMultiplier;
 
-    std::fprintf(stderr, "[BeetleRecomp] RT64 initialized (graphics api %d)\n", static_cast<int>(chosen_api));
+    std::fprintf(stderr, "[beetle-adventure-racing-recomp] RT64 initialized (graphics api %d)\n", static_cast<int>(chosen_api));
 }
 
 void RT64Context::send_dl(const OSTask* task) {

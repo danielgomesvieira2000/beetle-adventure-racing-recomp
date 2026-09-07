@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Post-process N64Recomp output. Run AFTER `./N64Recomp BeetleRecomp.toml`, BEFORE building.
+# Post-process N64Recomp output. Run AFTER `./N64Recomp beetle-adventure-racing-recomp.toml`, BEFORE building.
 #
 # ---------------------------------------------------------------------------------------------
 # WHY THIS EXISTS, AND WHY IT VERIFIES ITSELF

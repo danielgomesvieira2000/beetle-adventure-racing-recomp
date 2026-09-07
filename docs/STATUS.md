@@ -3,7 +3,7 @@
 _Last updated: 2026-07-03_
 
 ## TL;DR
-- ✅ **Builds + links + runs** → `build-cmake/BeetleRecomp.exe` (native Windows, clang-cl, RT64/D3D12).
+- ✅ **Builds + links + runs** → `build-cmake/beetle-adventure-racing-recomp.exe` (native Windows, clang-cl, RT64/D3D12).
 - ✅ **Plays** — boots through the intros/menus into races, **renders at 60 fps**, **keyboard input**
   works, and **audio plays**. The boot/menu pipeline (uv module overlay bridge, 78 modules, zero
   "Failed to find function"), VI, SI, RSP gfx + audio tasks all run.
@@ -96,7 +96,7 @@ The full static-recompilation pipeline compiles end to end:
 ```
 your ROM → BeetleDecomp `make recomp` → recomp.elf (133 module overlays)
         → N64Recomp → 22,406 functions (RecompiledFuncs/)
-        → clang-cl + RT64 + librecomp/ultramodern → BeetleRecomp.exe
+        → clang-cl + RT64 + librecomp/ultramodern → beetle-adventure-racing-recomp.exe
 ```
 
 ## Verified build environment (Windows)
@@ -109,7 +109,7 @@ your ROM → BeetleDecomp `make recomp` → recomp.elf (133 module overlays)
 ## Reproduce the build (from a clean tree)
 ```bash
 # 0. Dependencies (once)
-git submodule update --init --recursive                 # in BeetleRecomp (RT64 contrib, etc.)
+git submodule update --init --recursive                 # in beetle-adventure-racing-recomp (RT64 contrib, etc.)
 #    Install: VS Build Tools 2022 (Desktop C++ + Win SDK), LLVM (clang-cl), CLion.
 
 # 1. Decomp -> per-module ELF (in WSL)
@@ -122,7 +122,7 @@ scripts/fetch-elf.sh                                     # -> elf/recomp.elf
 #    git clone https://github.com/N64Recomp/N64Recomp ~/tools/N64Recomp
 #    cd ~/tools/N64Recomp && git checkout ffb39cd && git submodule update --init --recursive
 #    cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build -j6
-~/tools/N64Recomp/build/N64Recomp BeetleRecomp.toml      # -> RecompiledFuncs/
+~/tools/N64Recomp/build/N64Recomp beetle-adventure-racing-recomp.toml      # -> RecompiledFuncs/
 
 # 4. REQUIRED post-gen fixup (the `lw $zero` codegen quirk)
 scripts/fix-recompiled.sh
@@ -130,7 +130,7 @@ scripts/fix-recompiled.sh
 # 5. Configure + build (clang-cl + Ninja, from a VS env / x64 Native Tools prompt)
 cmake -S . -B build-cmake -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release
 cmake --build build-cmake -j
-# -> build-cmake/BeetleRecomp.exe (+ SDL2.dll, dxcompiler.dll, dxil.dll copied beside it)
+# -> build-cmake/beetle-adventure-racing-recomp.exe (+ SDL2.dll, dxcompiler.dll, dxil.dll copied beside it)
 ```
 Or open the folder in **CLion** (Toolchain = Visual Studio, C/C++ compiler = `clang-cl`, generator = Ninja).
 See [BUILDING.md](../BUILDING.md).
@@ -192,9 +192,9 @@ CMAKE="/c/Users/Bryan/AppData/Local/Programs/CLion/bin/cmake/win/x64/bin/cmake.e
 "$CMAKE" -S . -B build-cmake          # clang-cl + Ninja are cached; clang-cl auto-detects MSVC
 "$CMAKE" --build build-cmake -j
 # Run (Release = /SUBSYSTEM:WINDOWS, so redirect to see logs):
-cd build-cmake && ./BeetleRecomp.exe >run.log 2>&1   # ROM path: argv[1], else hardcoded Downloads path
+cd build-cmake && ./beetle-adventure-racing-recomp.exe >run.log 2>&1   # ROM path: argv[1], else hardcoded Downloads path
 # Symbolized backtrace at a crash:
-"/c/Program Files/LLVM/bin/lldb.exe" --batch -o run -o bt -o quit -- ./BeetleRecomp.exe
+"/c/Program Files/LLVM/bin/lldb.exe" --batch -o run -o bt -o quit -- ./beetle-adventure-racing-recomp.exe
 ```
 
 ## ✅ DONE: the uv module overlay CODE bridge

@@ -3,7 +3,7 @@
  * The load address must not collide with anything the game itself occupies, because
  * patch symbols keep these addresses when the recompiler resolves relocations:
  *
- *   0x80000400          game entrypoint (BeetleRecomp.toml `entrypoint`)
+ *   0x80000400          game entrypoint (beetle-adventure-racing-recomp.toml `entrypoint`)
  *   0x80800000 upwards  the ~133 relocatable UV overlay modules
  *
  * 0x80000000 -- which this script used to specify -- sits 1 KiB below the entrypoint,

@@ -1,4 +1,4 @@
-# BeetleRecomp
+# beetle-adventure-racing-recomp
 
 A work-in-progress **native PC port of _Beetle Adventure Racing!_ (N64, USA)** built by
 **static recompilation** with the [N64Recomp][N64Recomp] toolchain — the same approach
@@ -107,7 +107,7 @@ The toolchain license analysis and research sources are in
 ```
 your ROM ─┐
           ├─► BeetleDecomp (WSL) ──► symbol-rich ELF ──► N64Recomp ──► RecompiledFuncs/*.c ─┐
-recomp.ld ┘   (per-module layout)                       (BeetleRecomp.toml)                 ├─► CMake ─► BeetleRecomp(.exe)
+recomp.ld ┘   (per-module layout)                       (beetle-adventure-racing-recomp.toml)                 ├─► CMake ─► beetle-adventure-racing-recomp(.exe)
                                                                                             │
  patches/*.c ─► clang -target mips ─► patches.elf ─► N64Recomp (patches.toml) ─► RecompiledPatches/*.c ┘
                                                             │
@@ -117,8 +117,8 @@ recomp.ld ┘   (per-module layout)                       (BeetleRecomp.toml)   
 ## Repository layout
 
 ```
-BeetleRecomp/
-├── BeetleRecomp.toml      # main N64Recomp config (entrypoint 0x80000400, ELF, overlays)
+beetle-adventure-racing-recomp/
+├── beetle-adventure-racing-recomp.toml      # main N64Recomp config (entrypoint 0x80000400, ELF, overlays)
 ├── patches.toml           # config for the C patches (MIPS override/hook layer)
 ├── overlays.us.txt        # relocatable module/overlay section list
 ├── CMakeLists.txt         # host-app build (clang-cl + Ninja)
@@ -158,7 +158,7 @@ scripts/setup.sh                  # or scripts/setup.ps1 on Windows PowerShell
 scripts/fetch-elf.sh              # or scripts/fetch-elf.ps1
 
 # 3. Recompile the game to C.
-./N64Recomp BeetleRecomp.toml     # emits RecompiledFuncs/*.c
+./N64Recomp beetle-adventure-racing-recomp.toml     # emits RecompiledFuncs/*.c
 scripts/fix-recompiled.sh         # REQUIRED codegen fixup — re-run after every regeneration
 
 # 4. Configure + build the port (clang-cl on Windows, clang on Linux/macOS).

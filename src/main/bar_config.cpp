@@ -1,4 +1,4 @@
-// bar_config.cpp — BeetleRecomp feature/settings flags.
+// bar_config.cpp — beetle-adventure-racing-recomp feature/settings flags.
 //
 // These are the toggles the recompiled game code (RecompiledFuncs/*.c) queries at runtime. For now they
 // are hardcoded / env-driven; the in-game settings menu being built on the feature/settings-menu-and-high-fps

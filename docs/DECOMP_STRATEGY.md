@@ -148,7 +148,7 @@ the permuter's search — annotation is cheap-model work.
 | `bar-decomp/RESUME_GRIND.md` | Rewritten: current state + next actions, points at the playbook |
 | `bar-decomp/tools/decomp_helpers/grind/` | +`permute_campaign2.py`, `gen_cards2.py`, `sweep_wins.py`, `bank_wins.py` (mirrored to `.grind/`) |
 | `bar-decomp` prompts/settings | "IDO 7.1" → "IDO 5.3" everywhere |
-| `BeetleRecomp/docs/DECOMP_STRATEGY.md` | This report |
+| `beetle-adventure-racing-recomp/docs/DECOMP_STRATEGY.md` | This report |
 
 Still recommended (not yet built): a `rename_symbol.py` helper for phase 3; multi-seed permuter
 imports (`<fn>-2`, `<fn>-3` dirs from diverse attempts); a ledger-regeneration script so

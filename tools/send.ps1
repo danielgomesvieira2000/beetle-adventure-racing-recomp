@@ -1,4 +1,4 @@
-# send.ps1 — foreground the BeetleRecomp game window (by title) and send keystrokes and/or a mouse-wheel
+# send.ps1 — foreground the beetle-adventure-racing-recomp game window (by title) and send keystrokes and/or a mouse-wheel
 # scroll, then capture a screenshot. For UI input testing.
 # Usage: powershell -ExecutionPolicy Bypass -File tools/send.ps1 -Keys "{DOWN}{DOWN}{ENTER}" -Out k.png
 #        powershell -ExecutionPolicy Bypass -File tools/send.ps1 -Wheel -3 -Fx 0.5 -Fy 0.5 -Out s.png

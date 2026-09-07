@@ -1,4 +1,4 @@
-# Bootstrap BeetleRecomp on Windows: fetch deps and build the recompiler tools.
+# Bootstrap beetle-adventure-racing-recomp on Windows: fetch deps and build the recompiler tools.
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
@@ -28,4 +28,4 @@ Write-Host ">> Copying recompiler executables to repo root..."
 Get-ChildItem -Path lib/N64Recomp/build -Recurse -Include N64Recomp.exe,RSPRecomp.exe |
   ForEach-Object { Copy-Item -Force $_.FullName . }
 
-Write-Host ">> Done. Next: scripts/fetch-elf.ps1, then .\N64Recomp.exe BeetleRecomp.toml"
+Write-Host ">> Done. Next: scripts/fetch-elf.ps1, then .\N64Recomp.exe beetle-adventure-racing-recomp.toml"

@@ -1,4 +1,4 @@
-# shot.ps1 — capture ONLY the BeetleRecomp game window. Foregrounds it by title, verifies it is actually
+# shot.ps1 — capture ONLY the beetle-adventure-racing-recomp game window. Foregrounds it by title, verifies it is actually
 # the foreground window, and captures just its rect. If it can't be brought to front, it ABORTS without
 # capturing (so it can never accidentally grab another app's window). Usage:
 #   powershell -ExecutionPolicy Bypass -File tools/shot.ps1 -Out C:\path\shot.png

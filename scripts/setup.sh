@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap BeetleRecomp: fetch dependencies and build the recompiler tools.
+# Bootstrap beetle-adventure-racing-recomp: fetch dependencies and build the recompiler tools.
 # Run once after cloning; safe to re-run.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -34,4 +34,4 @@ find lib/N64Recomp/build -maxdepth 2 -type f \
   -exec cp -f {} . \;
 
 echo ">> Done."
-echo ">> Next: scripts/fetch-elf.sh, then ./N64Recomp BeetleRecomp.toml"
+echo ">> Next: scripts/fetch-elf.sh, then ./N64Recomp beetle-adventure-racing-recomp.toml"

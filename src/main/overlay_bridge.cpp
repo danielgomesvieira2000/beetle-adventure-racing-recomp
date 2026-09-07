@@ -91,12 +91,12 @@ extern "C" void uvDoModuleRelocs(uint8_t* rdram, recomp_context* ctx) {
         // it behind BAR_DEBUG_OVERLAYS (off by default). The unknown-tag WARN below stays unconditional.
         static const bool dbg_overlays = std::getenv("BAR_DEBUG_OVERLAYS") != nullptr;
         if (dbg_overlays) {
-            std::fprintf(stderr, "[BeetleRecomp] overlay '%c%c%c%c' (id %d) -> 0x%08X\n",
+            std::fprintf(stderr, "[beetle-adventure-racing-recomp] overlay '%c%c%c%c' (id %d) -> 0x%08X\n",
                 (char)(name_tag >> 24), (char)(name_tag >> 16), (char)(name_tag >> 8), (char)name_tag,
                 overlay_id, (uint32_t)ovl_start);
         }
     } else {
-        std::fprintf(stderr, "[BeetleRecomp] WARN: unknown module nameTag '%c%c%c%c' (0x%08X) @ 0x%08X — not registered\n",
+        std::fprintf(stderr, "[beetle-adventure-racing-recomp] WARN: unknown module nameTag '%c%c%c%c' (0x%08X) @ 0x%08X — not registered\n",
             (char)(name_tag >> 24), (char)(name_tag >> 16), (char)(name_tag >> 8), (char)name_tag,
             name_tag, (uint32_t)ovl_start);
     }

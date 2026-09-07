@@ -1,4 +1,4 @@
-# BeetleRecomp — TODO / Roadmap
+# beetle-adventure-racing-recomp — TODO / Roadmap
 
 _Last updated: 2026-07-03_
 

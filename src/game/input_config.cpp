@@ -248,7 +248,7 @@ bool save(const InputConfig& config) {
         out << input_to_json(config).dump(4) << '\n';
         return out.good();
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "[BeetleRecomp] failed to write \"%s\": %s\n", path.string().c_str(), e.what());
+        std::fprintf(stderr, "[beetle-adventure-racing-recomp] failed to write \"%s\": %s\n", path.string().c_str(), e.what());
         return false;
     }
 }
@@ -263,14 +263,14 @@ InputConfig load() {
             nlohmann::json j;
             in >> j;
             config = input_from_json(j);
-            std::fprintf(stderr, "[BeetleRecomp] loaded input config from \"%s\"\n", path.string().c_str());
+            std::fprintf(stderr, "[beetle-adventure-racing-recomp] loaded input config from \"%s\"\n", path.string().c_str());
         } catch (const std::exception& e) {
-            std::fprintf(stderr, "[BeetleRecomp] input.json parse error (%s); using defaults\n", e.what());
+            std::fprintf(stderr, "[beetle-adventure-racing-recomp] input.json parse error (%s); using defaults\n", e.what());
             config = default_input_config();
         }
     } else {
         save(config);   // first run: write defaults so the file is discoverable/hand-editable
-        std::fprintf(stderr, "[BeetleRecomp] no input.json; wrote defaults to \"%s\"\n", path.string().c_str());
+        std::fprintf(stderr, "[beetle-adventure-racing-recomp] no input.json; wrote defaults to \"%s\"\n", path.string().c_str());
     }
     {
         std::lock_guard<std::mutex> lk(g_mutex);

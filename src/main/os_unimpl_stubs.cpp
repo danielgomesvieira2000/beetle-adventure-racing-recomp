@@ -65,7 +65,7 @@ extern "C" void bar_dbg_slide(const char* tag) {
         if (!fired && burst_count > 0 && std::strcmp(tag, burst_tag) == 0) {
             fired = true;
             bar_rt64_start_burst(burst_dir, burst_count);
-            std::fprintf(stderr, "[BeetleRecomp] BURST_ON_ROLL -> %s x%d @%s\n", burst_dir, burst_count, burst_tag);
+            std::fprintf(stderr, "[beetle-adventure-racing-recomp] BURST_ON_ROLL -> %s x%d @%s\n", burst_dir, burst_count, burst_tag);
             std::fflush(stderr);
         }
     }

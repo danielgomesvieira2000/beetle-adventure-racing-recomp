@@ -43,6 +43,43 @@ fs::path executable_dir() {
 #endif
 }
 
+// One-time migration of the pre-rename settings directory.
+//
+// This app used to be called "BeetleRecomp" and stored its settings under that name. Renaming it
+// moved the directory, which would have silently presented every existing player with a fresh
+// first run: no key bindings, no graphics settings, no cached ROM (so the launcher would sit on
+// "Load ROM" again), and no Controller Pak saves. So if the new directory does not exist yet but
+// the old one does, rename the old one into place.
+//
+// This is the only place the former name survives in code, and it is deliberate: it is a legacy
+// path to be found, not a name this program answers to.
+//
+// fs::rename is atomic on the same volume and both paths are siblings under the same config root,
+// so there is no partially-migrated state to reason about. Every failure is non-fatal -- the app
+// carries on with an empty new directory, exactly as it would have without this function.
+void migrate_legacy_config_directory(const fs::path& new_dir) {
+    static constexpr const char* kLegacyName = "BeetleRecomp";
+
+    std::error_code ec;
+    if (fs::exists(new_dir, ec)) {
+        return;                                  // already migrated, or a genuinely fresh install
+    }
+
+    const fs::path legacy = new_dir.parent_path() / kLegacyName;
+    if (!fs::is_directory(legacy, ec)) {
+        return;                                  // nothing to migrate
+    }
+
+    fs::rename(legacy, new_dir, ec);
+    if (ec) {
+        std::fprintf(stderr, "[beetle-adventure-racing-recomp] could not migrate settings from \"%s\" (%s); "
+                             "starting with fresh settings\n", legacy.string().c_str(), ec.message().c_str());
+        return;
+    }
+    std::fprintf(stderr, "[beetle-adventure-racing-recomp] migrated settings from \"%s\"\n",
+                 legacy.string().c_str());
+}
+
 fs::path compute_app_config_directory() {
     std::error_code ec;
     const fs::path exe_dir = executable_dir();
@@ -51,14 +88,14 @@ fs::path compute_app_config_directory() {
     }
 #if defined(_WIN32)
     if (const char* local = std::getenv("LOCALAPPDATA")) {
-        return fs::path(local) / "BeetleRecomp";
+        return fs::path(local) / "beetle-adventure-racing-recomp";
     }
 #else
     if (const char* xdg = std::getenv("XDG_CONFIG_HOME")) {
-        return fs::path(xdg) / "BeetleRecomp";
+        return fs::path(xdg) / "beetle-adventure-racing-recomp";
     }
     if (const char* home = std::getenv("HOME")) {
-        return fs::path(home) / ".config" / "BeetleRecomp";
+        return fs::path(home) / ".config" / "beetle-adventure-racing-recomp";
     }
 #endif
     return fs::current_path();
@@ -144,10 +181,13 @@ namespace bar::config {
 const fs::path& get_app_config_directory() {
     static const fs::path dir = [] {
         fs::path d = compute_app_config_directory();
+        // Before create_directories() below makes the new path exist, and so before anything can
+        // read a setting out of it.
+        migrate_legacy_config_directory(d);
         std::error_code ec;
         fs::create_directories(d, ec);
         if (ec) {
-            std::fprintf(stderr, "[BeetleRecomp] could not create config dir \"%s\" (%s); using cwd\n",
+            std::fprintf(stderr, "[beetle-adventure-racing-recomp] could not create config dir \"%s\" (%s); using cwd\n",
                          d.string().c_str(), ec.message().c_str());
             return fs::current_path();
         }
@@ -185,15 +225,15 @@ GraphicsConfig load_and_apply_graphics() {
             nlohmann::json j;
             in >> j;
             config = graphics_from_json(j);
-            std::fprintf(stderr, "[BeetleRecomp] loaded graphics config from \"%s\"\n", path.string().c_str());
+            std::fprintf(stderr, "[beetle-adventure-racing-recomp] loaded graphics config from \"%s\"\n", path.string().c_str());
         } catch (const std::exception& e) {
-            std::fprintf(stderr, "[BeetleRecomp] graphics.json parse error (%s); using defaults\n", e.what());
+            std::fprintf(stderr, "[beetle-adventure-racing-recomp] graphics.json parse error (%s); using defaults\n", e.what());
             config = default_graphics_config();
         }
     } else {
         // First run: write defaults so the file is discoverable and hand-editable until the menu exists.
         save_graphics(config);
-        std::fprintf(stderr, "[BeetleRecomp] no graphics.json; wrote defaults to \"%s\"\n", path.string().c_str());
+        std::fprintf(stderr, "[beetle-adventure-racing-recomp] no graphics.json; wrote defaults to \"%s\"\n", path.string().c_str());
     }
     ultramodern::renderer::set_graphics_config(config);
     return config;
@@ -206,7 +246,7 @@ bool save_graphics(const GraphicsConfig& config) {
         out << graphics_to_json(config).dump(4) << '\n';
         return out.good();
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "[BeetleRecomp] failed to write \"%s\": %s\n", path.string().c_str(), e.what());
+        std::fprintf(stderr, "[beetle-adventure-racing-recomp] failed to write \"%s\": %s\n", path.string().c_str(), e.what());
         return false;
     }
 }

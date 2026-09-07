@@ -1,4 +1,4 @@
-# CMakeLists.txt — BeetleRecomp (static-recomp PC port of Beetle Adventure Racing)
+# CMakeLists.txt — beetle-adventure-racing-recomp (static-recomp PC port of Beetle Adventure Racing)
 #
 # Adapted from Zelda64Recomp/Zelda64Recomp @ dev (CMakeLists.txt). Pinned deps in this repo:
 #   lib/N64ModernRuntime @ main (recomp::start(Configuration) — see src/main/main.cpp)
@@ -9,12 +9,12 @@
 # Prereqs before this will configure/build:
 #   1) scripts/setup.*  -> `git submodule update --init --recursive` (populates the NESTED
 #      submodules: N64ModernRuntime/N64Recomp, rt64/contrib, etc.) and builds N64Recomp.
-#   2) ./N64Recomp BeetleRecomp.toml  -> populates RecompiledFuncs/*.c (this file globs them).
+#   2) ./N64Recomp beetle-adventure-racing-recomp.toml  -> populates RecompiledFuncs/*.c (this file globs them).
 #   3) A C++20 toolchain: Windows = VS2022 + clang-cl + Ninja (RT64 -> D3D12);
 #      Linux = clang + ninja + SDL2/GTK (RT64 -> Vulkan). See BUILDING.md.
 
 cmake_minimum_required(VERSION 3.20)
-project(BeetleRecomp LANGUAGES C CXX)
+project(beetle-adventure-racing-recomp LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_STANDARD 20)
@@ -72,7 +72,7 @@ if (BEETLE_ENABLE_FRONTEND)
     # recompui/recompinput include SDL2 headers directly and expect either sdl2_SOURCE_DIR (the
     # Windows FetchContent layout) or SDL2_INCLUDE_DIRS (a system package) to be set ALREADY — their
     # own CMake notes this as a standalone-build limitation. Our SDL2 acquisition lives further down
-    # beside the BeetleRecomp target, which is too late: the frontend would configure with an empty
+    # beside the beetle-adventure-racing-recomp target, which is too late: the frontend would configure with an empty
     # include path and fail on `#include "SDL.h"`. Acquire it here first. Both calls are idempotent,
     # so the later block simply reuses what this populates.
     if (WIN32)
@@ -125,7 +125,7 @@ set(RECOMP_INCLUDES
 )
 
 # ---------------------------------------------------------------------------
-# RecompiledFuncs — N64Recomp output. Run `./N64Recomp BeetleRecomp.toml` FIRST,
+# RecompiledFuncs — N64Recomp output. Run `./N64Recomp beetle-adventure-racing-recomp.toml` FIRST,
 # or this target will have no sources and CMake will error.
 # ---------------------------------------------------------------------------
 add_library(RecompiledFuncs STATIC)
@@ -163,16 +163,16 @@ target_sources(RecompiledFuncs PRIVATE ${FUNC_C_SOURCES} ${FUNC_CXX_SOURCES})
 # add_executable(), where the target exists.
 if (EXISTS ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches.c)
     set(BEETLE_PATCH_SOURCE ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches.c)
-    message(STATUS "BeetleRecomp: compiling recompiled patches into the executable (RecompiledPatches/patches.c)")
+    message(STATUS "beetle-adventure-racing-recomp: compiling recompiled patches into the executable (RecompiledPatches/patches.c)")
 else()
     set(BEETLE_PATCH_SOURCE "")
-    message(STATUS "BeetleRecomp: no RecompiledPatches/patches.c — building without patches")
+    message(STATUS "beetle-adventure-racing-recomp: no RecompiledPatches/patches.c — building without patches")
 endif()
 
 # ---------------------------------------------------------------------------
 # Main executable
 # ---------------------------------------------------------------------------
-add_executable(BeetleRecomp
+add_executable(beetle-adventure-racing-recomp
     ${CMAKE_SOURCE_DIR}/src/main/main.cpp
     ${CMAKE_SOURCE_DIR}/src/main/os_unimpl_stubs.cpp     # no-op stubs for ignored OS funcs BAR calls
     ${CMAKE_SOURCE_DIR}/src/main/register_overlays.cpp   # wires recomp_overlays.inl into librecomp
@@ -191,7 +191,7 @@ add_executable(BeetleRecomp
     # TODO(BAR): add as authored (mirroring Zelda's src/main + src/game):
     #   src/main/register_patches.cpp
 )
-target_include_directories(BeetleRecomp PRIVATE
+target_include_directories(beetle-adventure-racing-recomp PRIVATE
     ${RECOMP_INCLUDES}
     ${CMAKE_SOURCE_DIR}/src                         # "game/config.hpp", etc.
     ${CMAKE_SOURCE_DIR}/RecompiledFuncs            # recomp_overlays.inl + funcs.h
@@ -203,12 +203,12 @@ target_include_directories(BeetleRecomp PRIVATE
 )
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
-    target_compile_options(BeetleRecomp PRIVATE -march=nehalem -fno-strict-aliasing -fms-extensions)
+    target_compile_options(beetle-adventure-racing-recomp PRIVATE -march=nehalem -fno-strict-aliasing -fms-extensions)
 else()
-    target_compile_options(BeetleRecomp PRIVATE -fno-strict-aliasing -fms-extensions)
+    target_compile_options(beetle-adventure-racing-recomp PRIVATE -fno-strict-aliasing -fms-extensions)
 endif()
 if (MSVC)
-    target_link_options(BeetleRecomp PRIVATE /OPT:NOICF)   # don't fold identical recompiled funcs
+    target_link_options(beetle-adventure-racing-recomp PRIVATE /OPT:NOICF)   # don't fold identical recompiled funcs
 endif()
 
 # ---- Windows: RT64 picks D3D12 by default; SDL2 via FetchContent ----
@@ -218,35 +218,35 @@ if (WIN32)
     FetchContent_Declare(sdl2
         URL https://github.com/libsdl-org/SDL/releases/download/release-${SDL2_VERSION}/SDL2-devel-${SDL2_VERSION}-VC.zip)
     FetchContent_MakeAvailable(sdl2)
-    target_include_directories(BeetleRecomp PRIVATE ${sdl2_SOURCE_DIR}/include)
-    target_link_directories(BeetleRecomp PRIVATE ${sdl2_SOURCE_DIR}/lib/x64)
+    target_include_directories(beetle-adventure-racing-recomp PRIVATE ${sdl2_SOURCE_DIR}/include)
+    target_link_directories(beetle-adventure-racing-recomp PRIVATE ${sdl2_SOURCE_DIR}/lib/x64)
     add_compile_definitions(NOMINMAX)
-    add_custom_command(TARGET BeetleRecomp POST_BUILD
+    add_custom_command(TARGET beetle-adventure-racing-recomp POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${sdl2_SOURCE_DIR}/lib/x64/SDL2.dll"
             "${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/dxc/bin/x64/dxil.dll"
             "${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/dxc/bin/x64/dxcompiler.dll"
-            $<TARGET_FILE_DIR:BeetleRecomp>)
-    set_target_properties(BeetleRecomp PROPERTIES
+            $<TARGET_FILE_DIR:beetle-adventure-racing-recomp>)
+    set_target_properties(beetle-adventure-racing-recomp PROPERTIES
         LINK_FLAGS_DEBUG          "/SUBSYSTEM:CONSOLE"
         LINK_FLAGS_RELEASE        "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
-    target_link_libraries(BeetleRecomp PRIVATE SDL2 Winmm.lib Dbghelp.lib)   # Winmm: timeBeginPeriod; Dbghelp: crash backtrace
-    # TODO(BAR): app icon -> target_sources(BeetleRecomp PRIVATE icons/app.rc)
+    target_link_libraries(beetle-adventure-racing-recomp PRIVATE SDL2 Winmm.lib Dbghelp.lib)   # Winmm: timeBeginPeriod; Dbghelp: crash backtrace
+    # TODO(BAR): app icon -> target_sources(beetle-adventure-racing-recomp PRIVATE icons/app.rc)
 endif()
 
 # ---- Linux: RT64 -> Vulkan ----
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     find_package(SDL2 REQUIRED)
     add_compile_definitions("RT64_SDL_WINDOW_VULKAN")
-    target_include_directories(BeetleRecomp PRIVATE ${SDL2_INCLUDE_DIRS})
+    target_include_directories(beetle-adventure-racing-recomp PRIVATE ${SDL2_INCLUDE_DIRS})
     set(THREADS_PREFER_PTHREAD_FLAG TRUE)
     find_package(Threads REQUIRED)
-    target_link_libraries(BeetleRecomp PRIVATE
+    target_link_libraries(beetle-adventure-racing-recomp PRIVATE
         "-latomic -static-libstdc++" ${CMAKE_DL_LIBS} Threads::Threads SDL2::SDL2)
 endif()
 
 # ---- Link the runtime + generated code ----
-target_link_libraries(BeetleRecomp PRIVATE
+target_link_libraries(beetle-adventure-racing-recomp PRIVATE
     RecompiledFuncs
     librecomp
     ultramodern
@@ -256,7 +256,7 @@ target_link_libraries(BeetleRecomp PRIVATE
 # Patches are compiled INTO the executable so their definitions precede the recompiled originals
 # in RecompiledFuncs (see the PatchesLib note above for why a static library cannot do this).
 if (BEETLE_PATCH_SOURCE)
-    target_sources(BeetleRecomp PRIVATE ${BEETLE_PATCH_SOURCE})
+    target_sources(beetle-adventure-racing-recomp PRIVATE ${BEETLE_PATCH_SOURCE})
     set_source_files_properties(${BEETLE_PATCH_SOURCE} PROPERTIES
         COMPILE_OPTIONS "-fno-strict-aliasing;-Wno-unused-variable;-Wno-implicit-function-declaration"
         INCLUDE_DIRECTORIES "${RECOMP_INCLUDES};${CMAKE_SOURCE_DIR}/RecompiledPatches")
@@ -264,23 +264,23 @@ endif()
 
 # ---- RecompFrontend launcher/menus + input ----
 if (BEETLE_ENABLE_FRONTEND)
-    target_sources(BeetleRecomp PRIVATE ${CMAKE_SOURCE_DIR}/src/frontend/bar_frontend.cpp)
-    target_link_libraries(BeetleRecomp PRIVATE recompui recompinput)
-    target_compile_definitions(BeetleRecomp PRIVATE BEETLE_ENABLE_FRONTEND)
+    target_sources(beetle-adventure-racing-recomp PRIVATE ${CMAKE_SOURCE_DIR}/src/frontend/bar_frontend.cpp)
+    target_link_libraries(beetle-adventure-racing-recomp PRIVATE recompui recompinput)
+    target_compile_definitions(beetle-adventure-racing-recomp PRIVATE BEETLE_ENABLE_FRONTEND)
     # recompui.h pulls SDL.h and RmlUi headers; RmlUi arrives transitively via recompui's PUBLIC
     # link, but SDL2 comes from our own FetchContent above.
     if (WIN32)
-        target_include_directories(BeetleRecomp PRIVATE ${sdl2_SOURCE_DIR}/include)
+        target_include_directories(beetle-adventure-racing-recomp PRIVATE ${sdl2_SOURCE_DIR}/include)
     endif()
 
     # Ship the UI assets recompui resolves as <exe dir>/assets/<name>: the REQUIRED primary font and
     # the project stylesheet. Without them recompui throws at menu-creation time.
     # Copy the whole tree so icons/ (and anything added later) comes along: recompui resolves both
     # "recomp.rcss" and "icons/X.svg" through the same <exe dir>/assets root.
-    add_custom_command(TARGET BeetleRecomp POST_BUILD
+    add_custom_command(TARGET beetle-adventure-racing-recomp POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "${CMAKE_SOURCE_DIR}/assets/ui"
-                "$<TARGET_FILE_DIR:BeetleRecomp>/assets"
+                "$<TARGET_FILE_DIR:beetle-adventure-racing-recomp>/assets"
         COMMENT "Staging RecompFrontend assets (stylesheet, primary font, icons)")
 endif()
 # ---------------------------------------------------------------------------
@@ -293,12 +293,12 @@ endif()
 # BEETLE_DEBUGINFO OFF once bring-up settles. ----
 option(BEETLE_DEBUGINFO "Embed debug info in the boot-path targets for crash diagnosis" ON)
 if (BEETLE_DEBUGINFO AND MSVC)
-    foreach(dbgtgt RecompiledFuncs librecomp ultramodern BeetleRecomp)
+    foreach(dbgtgt RecompiledFuncs librecomp ultramodern beetle-adventure-racing-recomp)
         if (TARGET ${dbgtgt})
             target_compile_options(${dbgtgt} PRIVATE /Z7)
         endif()
     endforeach()
-    target_link_options(BeetleRecomp PRIVATE /DEBUG)
+    target_link_options(beetle-adventure-racing-recomp PRIVATE /DEBUG)
 endif()
 
-set_property(TARGET BeetleRecomp PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+set_property(TARGET beetle-adventure-racing-recomp PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")

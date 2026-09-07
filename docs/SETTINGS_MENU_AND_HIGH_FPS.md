@@ -2,7 +2,7 @@
 
 _Last updated: 2026-06-29 · Status: research only, no code changed_
 
-This report answers two questions for BeetleRecomp (static-recomp PC port of **Beetle
+This report answers two questions for beetle-adventure-racing-recomp (static-recomp PC port of **Beetle
 Adventure Racing**, built on the same N64Recomp + RT64 + N64ModernRuntime stack as
 Zelda64Recompiled):
 
@@ -90,7 +90,7 @@ first (ROM pick + main menu); the config context is reachable before *and* durin
 "Play" calls `recomp::select_rom()` then `recomp::start_game(game_id)` and hides the launcher.
 The recompiled game runs on ultramodern's threads; the UI renders over it through RT64.
 
-## 1.2 What BeetleRecomp has today
+## 1.2 What beetle-adventure-racing-recomp has today
 
 | Piece | State | Evidence |
 |---|---|---|
@@ -128,7 +128,7 @@ A native file dialog (or `portable.txt`-style fixed path) covers ROM picking.
 Steps:
 1. **Config persistence (host-owned).** Add `src/game/config.cpp`: load/save a
    `config.json` using `GraphicsConfig`'s existing nlohmann serialization; store it under a
-   real per-user dir (`%LOCALAPPDATA%\BeetleRecomp\`) and pass that to
+   real per-user dir (`%LOCALAPPDATA%\beetle-adventure-racing-recomp\`) and pass that to
    `register_config_path()` instead of `cwd` ([main.cpp:300]). On startup, load → build a
    `GraphicsConfig` → `set_graphics_config()`.
 2. **Defer auto-start.** Today a detached thread calls `start_game()` once the VI ticks
@@ -211,7 +211,7 @@ Because Clock 2 is a pure *consumer* of frames Clock 1 already produced, generat
 display frames between two game frames changes nothing the game can observe. **That is the
 guarantee** the user is asking for.
 
-## 2.3 What BeetleRecomp has today — the plumbing is already wired
+## 2.3 What beetle-adventure-racing-recomp has today — the plumbing is already wired
 
 The framerate config flows **all the way through to RT64 already**:
 

@@ -1,4 +1,4 @@
-// src/game/config.hpp — host-owned settings persistence for BeetleRecomp.
+// src/game/config.hpp — host-owned settings persistence for beetle-adventure-racing-recomp.
 //
 // ultramodern owns the live GraphicsConfig (get/set_graphics_config) but never touches disk —
 // loading and saving the user's settings is the port's job. This module:
@@ -22,8 +22,8 @@ namespace bar::config {
 // Per-user config/data directory, created if missing. Resolution order:
 //   1. If a file named "portable.txt" sits next to the executable -> the executable's directory
 //      (portable install; settings + saves stay with the app).
-//   2. Windows:  %LOCALAPPDATA%\BeetleRecomp\
-//      Linux:    $XDG_CONFIG_HOME/BeetleRecomp  (else ~/.config/BeetleRecomp)
+//   2. Windows:  %LOCALAPPDATA%\beetle-adventure-racing-recomp\
+//      Linux:    $XDG_CONFIG_HOME/beetle-adventure-racing-recomp  (else ~/.config/beetle-adventure-racing-recomp)
 //   3. Fallback: the current working directory.
 // The result is cached after the first call.
 const std::filesystem::path& get_app_config_directory();

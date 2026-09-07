@@ -1,7 +1,7 @@
 # Port status
 
 Current state of **this fork**, as of 2026-09-04. `docs/STATUS.md` is the *inherited* status from
-`bryankruban/BeetleRecomp` and describes the tree before this fork diverged — it is still useful for
+`bryankruban/beetle-adventure-racing-recomp` and describes the tree before this fork diverged — it is still useful for
 the BAR-specific findings it records, but it is not a description of this repository any more.
 
 ## What works today

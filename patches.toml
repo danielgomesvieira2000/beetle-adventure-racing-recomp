@@ -7,7 +7,7 @@
 # Run with:  ./N64Recomp patches.toml   (after building patches/patches.elf)
 #
 # This is a LATER-phase step: the minimal first-boot path needs only
-# BeetleRecomp.toml. Patches require symbol TOMLs generated from the decomp
+# beetle-adventure-racing-recomp.toml. Patches require symbol TOMLs generated from the decomp
 # (see syms/ and the README).
 
 [input]

@@ -1,6 +1,6 @@
 # N64Recomp configuration for Beetle Adventure Racing (USA).
 #
-# Run with:  ./N64Recomp BeetleRecomp.toml   (emits RecompiledFuncs/*.c)
+# Run with:  ./N64Recomp beetle-adventure-racing-recomp.toml   (emits RecompiledFuncs/*.c)
 # Reference: https://github.com/N64Recomp/N64Recomp  +  Zelda64Recomp/us.rev1.toml
 
 [input]

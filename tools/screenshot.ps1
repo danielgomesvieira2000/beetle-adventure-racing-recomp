@@ -1,4 +1,4 @@
-# screenshot.ps1 — capture the BeetleRecomp game window to a PNG for render verification.
+# screenshot.ps1 — capture the beetle-adventure-racing-recomp game window to a PNG for render verification.
 # Usage:  powershell -ExecutionPolicy Bypass -File tools/screenshot.ps1 -Out shot.png
 # Grabs the composited desktop at the window's bounds (works for D3D12 swapchains, unlike GDI
 # window-DC capture which returns black). Brings the window forward first so it isn't occluded.
@@ -16,7 +16,7 @@ public class W {
 }
 "@
 
-$p = Get-Process BeetleRecomp -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+$p = Get-Process beetle-adventure-racing-recomp -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
 if (-not $p) { Write-Output "NO_WINDOW"; exit 1 }
 $h = $p.MainWindowHandle
 [W]::ShowWindow($h, 5) | Out-Null          # SW_SHOW

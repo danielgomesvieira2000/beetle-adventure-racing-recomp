@@ -1,5 +1,5 @@
 // bar_crash.cpp — symbolized crash backtrace (debug aid). Installs an unhandled-exception filter that, on
-// an access violation, walks the faulting thread's stack via DbgHelp (needs BeetleRecomp.pdb next to the exe)
+// an access violation, walks the faulting thread's stack via DbgHelp (needs beetle-adventure-racing-recomp.pdb next to the exe)
 // and prints symbol names to stderr. Used to locate where the cooperative-preemption yield faults.
 //
 // Windows-only: this uses DbgHelp + SetUnhandledExceptionFilter, which have no portable equivalent.
@@ -16,7 +16,7 @@ static LONG WINAPI bar_crash_filter(EXCEPTION_POINTERS* ep) {
     SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_UNDNAME);
     SymInitialize(proc, nullptr, TRUE);
 
-    std::fprintf(stderr, "\n[BeetleRecomp] *** CRASH code=0x%08lx addr=%p ***\n",
+    std::fprintf(stderr, "\n[beetle-adventure-racing-recomp] *** CRASH code=0x%08lx addr=%p ***\n",
                  ep->ExceptionRecord->ExceptionCode, ep->ExceptionRecord->ExceptionAddress);
 
     CONTEXT ctx = *ep->ContextRecord;

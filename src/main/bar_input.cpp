@@ -179,7 +179,7 @@ void on_controller_added(int sdl_device_index) {
     if (!SDL_IsGameController(sdl_device_index)) return;
     SDL_GameController* gc = SDL_GameControllerOpen(sdl_device_index);
     if (gc == nullptr) {
-        std::fprintf(stderr, "[BeetleRecomp] SDL_GameControllerOpen(%d) failed: %s\n", sdl_device_index, SDL_GetError());
+        std::fprintf(stderr, "[beetle-adventure-racing-recomp] SDL_GameControllerOpen(%d) failed: %s\n", sdl_device_index, SDL_GetError());
         return;
     }
     SDL_Joystick* js = SDL_GameControllerGetJoystick(gc);
@@ -213,7 +213,7 @@ void on_controller_added(int sdl_device_index) {
         }
         g_pads.push_back(pad);
     }
-    std::fprintf(stderr, "[BeetleRecomp] gamepad connected: %s [%s]\n", pad.name.c_str(), pad.uid.c_str());
+    std::fprintf(stderr, "[beetle-adventure-racing-recomp] gamepad connected: %s [%s]\n", pad.name.c_str(), pad.uid.c_str());
 }
 
 void on_controller_removed(int sdl_instance_id) {
@@ -221,7 +221,7 @@ void on_controller_removed(int sdl_instance_id) {
     for (auto it = g_pads.begin(); it != g_pads.end(); ++it) {
         if (it->id == sdl_instance_id) {
             if (it->gc != nullptr) SDL_GameControllerClose(it->gc);
-            std::fprintf(stderr, "[BeetleRecomp] gamepad disconnected: %s\n", it->name.c_str());
+            std::fprintf(stderr, "[beetle-adventure-racing-recomp] gamepad disconnected: %s\n", it->name.c_str());
             g_pads.erase(it);
             return;
         }
@@ -477,7 +477,7 @@ void mempak_ensure_loaded(int port) {   // caller holds g_mempak_mutex
         format_empty_mempak(g_mempak[port]);
         std::ofstream out(p, std::ios::binary | std::ios::trunc);
         if (out) out.write(reinterpret_cast<const char*>(g_mempak[port].data()), kMempakSize);
-        std::fprintf(stderr, "[BeetleRecomp] created Controller Pak \"%s\"\n", p.string().c_str());
+        std::fprintf(stderr, "[beetle-adventure-racing-recomp] created Controller Pak \"%s\"\n", p.string().c_str());
     }
     g_mempak_loaded[port] = true;
     g_mempak_dirty[port] = false;

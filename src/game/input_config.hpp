@@ -1,4 +1,4 @@
-// src/game/input_config.hpp — host-owned controller/input settings for BeetleRecomp.
+// src/game/input_config.hpp — host-owned controller/input settings for beetle-adventure-racing-recomp.
 //
 // The runtime input path (single source of truth: bar_input in src/main) is driven by a 4-port
 // InputConfig: for each N64 controller port, whether it's plugged in, which physical device drives

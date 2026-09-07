@@ -1,4 +1,4 @@
-# Building BeetleRecomp
+# Building beetle-adventure-racing-recomp
 
 Two **separate** toolchains are involved — don't conflate them:
 
@@ -50,7 +50,7 @@ git submodule update --init --recursive       # (or clone with --recurse-submodu
 #    - build N64Recomp/RSPRecomp           (scripts/setup.*)
 #    - (WSL) cd ~/projects/bar-decomp && source .venv/bin/activate && make recomp
 #    - scripts/fetch-elf.*                 -> elf/recomp.elf
-#    - ./N64Recomp BeetleRecomp.toml       -> RecompiledFuncs/*.c
+#    - ./N64Recomp beetle-adventure-racing-recomp.toml       -> RecompiledFuncs/*.c
 ```
 
 ## Build — CLion (recommended on Windows)
@@ -59,7 +59,7 @@ git submodule update --init --recursive       # (or clone with --recurse-submodu
 2. **Settings → CMake**: generator **Ninja**, build type **Release**.
 3. Do **not** use CLion's bundled **MinGW**, and avoid the `-T ClangCL` / Visual Studio generator
    route (CLion bug CPP-18848) — the Ninja + clang-cl setup above sidesteps it.
-4. Open the project folder → CLion configures CMake → build the **BeetleRecomp** target.
+4. Open the project folder → CLion configures CMake → build the **beetle-adventure-racing-recomp** target.
 
 ## Build — command line (from an "x64 Native Tools Command Prompt")
 ```bash
@@ -68,6 +68,6 @@ cmake --build build-cmake -j
 ```
 
 ## Notes
-- Re-run `./N64Recomp BeetleRecomp.toml` whenever `recomp.elf` or a `*.toml` changes.
+- Re-run `./N64Recomp beetle-adventure-racing-recomp.toml` whenever `recomp.elf` or a `*.toml` changes.
 - The **decomp** builds only on a Linux/WSL IDO/MIPS toolchain; only the **recomp** builds natively
   on Windows. Keep this repo LF-normalized (`.gitattributes`) even on Windows.
