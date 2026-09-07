@@ -11,7 +11,8 @@ behind [Zelda 64: Recompiled](https://github.com/Zelda64Recomp/Zelda64Recomp).
 > 1x / 2x / 4x draw distance, internal-resolution scaling (defaults to display-native), MSAA + a VI
 > "divot" seam filter, and high-FPS interpolation (phase 1). A handful of polish items remain — see
 > **[docs/TODO.md](docs/TODO.md)** for the roadmap and **[docs/STATUS.md](docs/STATUS.md)** to
-> resume.
+> resume. The reverse-engineering and porting reference is
+> **[docs/technical/](docs/technical/README.md)**.
 >
 > A prebuilt Windows x64 build is on the
 > **[releases page](https://github.com/danielgomesvieira2000/beetle-adventure-racing-recomp/releases)**.
@@ -40,7 +41,8 @@ Two consequences worth stating plainly, because they affect how you should read 
 - **The documentation in `docs/` is the real artefact.** Findings, measurements and dead ends are
   written down as they are made — including the negative results, which are the expensive part. If
   you want to know *why* something is the way it is, `docs/` will usually tell you, in more detail
-  than is normal for a hobby port.
+  than is normal for a hobby port. The curated reference distilled out of it is
+  **[docs/technical/](docs/technical/README.md)** — see below.
 - **It is tested by playing it.** Rendering changes are checked in a running game, not only in
   captured frames; several defects here were only ever visible in motion.
 
@@ -55,6 +57,48 @@ This port is a sibling to the **[BeetleDecomp](https://github.com/bryankruman/Be
 decompilation. The decomp is *not* a prerequisite for the recomp, but it is the source of the
 **symbol-rich ELF** and the **module/relocation metadata** the recompiler consumes — which is
 what makes this port tractable.
+
+## Technical documentation
+
+**[`docs/technical/`](docs/technical/README.md) is a published reverse-engineering and porting
+reference for this game.** It exists because the expensive part of a project like this is not the
+code — it is knowing what the ROM contains, which of the game's mechanisms produce which pixels, and
+which plausible-looking approaches quietly do nothing. All of that was measured here, and leaving it
+in commit messages and scratch notes would waste it.
+
+It is written for two audiences:
+
+- **People who want to decompile *Beetle Adventure Racing*** — the ROM and memory layout, Paradigm's
+  "UV" engine, the ~133 relocatable modules and how they are loaded, the toolchain (IDO 5.3, splat,
+  WSL), and the three-phase matching strategy with the permuter economics behind it.
+- **People who want to build their own PC port** — of this game or another N64 title. The static
+  recompilation pipeline is documented end to end, including the parts that are in nobody's
+  tutorial: overlay registration for a module-based game, codegen fixups and why they must verify
+  themselves, hardware-register stubs that are not really stubs, cooperative scheduling and audio
+  starvation, joybus-level Controller Pak emulation, and the renderer work needed to make a 320×240
+  overscan-inset game look right on a modern display.
+
+| Chapter | Covers |
+|---|---|
+| [01 — The game and the ROM](docs/technical/01-game-and-rom.md) | Cartridge facts, memory map, entry point, save hardware, microcode, the frame clock, the screen-state globals |
+| [02 — The UV engine and the module system](docs/technical/02-engine-and-modules.md) | Export tables, the 133 relocatable modules, `ModuleCommInfo`, the loader, the two coordinate systems and two scissor paths |
+| [03 — Decompiling BAR](docs/technical/03-decompilation.md) | Toolchain, the module build, the match/scribe/name strategy, permuter economics, exactly what the recomp takes from the decomp |
+| [04 — Static recompilation](docs/technical/04-static-recompilation.md) | N64Recomp config, section/overlay tables, **the overlay bridge**, hardware stubs, the RSP audio ucode |
+| [05 — The runtime host](docs/technical/05-runtime-host.md) | librecomp/ultramodern/RT64 wiring, cooperative preemption, audio, the low-level SI/PIF input path, Controller Pak |
+| [06 — Graphics](docs/technical/06-graphics.md) | The gfx manager, the overscan inset, the frustum BAR culls against, widescreen, HUD anchoring |
+| [07 — Codegen fixups and MIPS patches](docs/technical/07-codegen-fixups-and-patches.md) | Every `fix-recompiled.sh` rule and why it exists; the `RECOMP_PATCH` pipeline and the linker trap it hides |
+| [08 — Diagnostics and methodology](docs/technical/08-diagnostics-and-methodology.md) | The `BAR_*` diagnostic surface, headless scripted runs, screenshot capture, how measurements are taken |
+| [09 — Porting playbook](docs/technical/09-porting-playbook.md) | Generalised: the order to do this in, the traps ranked by cost, what to build before you need it |
+
+Three conventions run through all of it, and they are the point rather than a style choice: every
+number names the switch that produced it, **negative results are kept** (a refuted hypothesis that
+gets deleted is one someone pays for again), and inference from unmatched assembly is labelled as
+inference rather than stated as fact.
+
+The reference is a **living document**: it is updated in the same change as the code it describes,
+and [`docs/technical/README.md`](docs/technical/README.md) carries the mapping from each source area
+to the chapter that owns it. The chronological working notes it distils — current state, roadmap and
+live bug reports — remain in `docs/` alongside it.
 
 ## Relationship to the decomp
 
@@ -125,7 +169,8 @@ beetle-adventure-racing-recomp/
 ├── COPYING                # AGPL-3.0 (inherited from the decomp)
 ├── THIRD_PARTY_NOTICES.md # dependency licenses + research sources
 ├── BUILDING.md            # full build instructions (Windows + Linux/macOS)
-├── docs/                  # STATUS.md (resume guide), TODO.md (roadmap), design notes
+├── docs/                  # STATUS.md (resume guide), TODO.md (roadmap), investigation notes
+│   └── technical/         # the published RE + porting reference (start at its README.md)
 ├── src/
 │   ├── main/              # native host: RT64 render context, input, audio, overlay bridge, config
 │   ├── game/              # game-facing config schema (graphics.json)
