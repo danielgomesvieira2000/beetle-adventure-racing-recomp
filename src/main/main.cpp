@@ -42,10 +42,11 @@
 #include "frontend/bar_frontend.h"            // bar::frontend — RecompFrontend launcher/menus + input
 #endif
 
-#ifdef BEETLE_ENABLE_UI
-#include "ui/bar_ui.h"                        // bar_ui — RmlUi launcher + settings + cheats menu (Tier 2)
-#include "gui/rt64_file_dialog.h"            // RT64::FileDialog — native "Open ROM" picker (first-run ROM select)
-#endif
+// NOTE: BEETLE_ENABLE_UI guarded the bespoke RmlUi launcher that 019305c removed, and nothing
+// defines it any more -- RecompFrontend is the only frontend and its option is
+// BEETLE_ENABLE_FRONTEND. The blocks still written against it below are dead code referring to the
+// deleted src/ui. They are left in place rather than removed here, because deleting them is a
+// separate cleanup; but be aware that NONE of them compile into either build.
 
 // The most-recently selected ROM path, handed to bar_ui for its (non-boot) "Play" request. The game
 // itself boots from the ROM cached in the config dir (see main()'s ROM-source block), not from here.
@@ -747,9 +748,11 @@ void bar_restart_game() {
 // unlike the stderr-only message_box() above (which nobody sees when launched from a GUI/launcher).
 static void bar_user_message(uint32_t sdl_flags, const char* msg) {
     std::fprintf(stderr, "[BeetleRecomp] %s\n", msg);
-#ifdef BEETLE_ENABLE_UI
+#ifdef BEETLE_ENABLE_FRONTEND
+    // The release build is /SUBSYSTEM:WINDOWS, so stderr goes nowhere a player will ever look.
     SDL_ShowSimpleMessageBox(sdl_flags, "Beetle Adventure Racing: Recompiled", msg, nullptr);
 #else
+    // The headless build keeps stderr only: a modal box would hang an automated run.
     (void)sdl_flags;
 #endif
 }
@@ -876,35 +879,25 @@ int main(int argc, char** argv) {
         have_rom = bar_select_and_report(std::filesystem::path(argv[1]), game_id);
     }
 
-#ifdef BEETLE_ENABLE_UI
-    // First run (or the cached ROM went missing / changed hash): ask the player to locate their ROM
-    // with a native file picker (RT64 wraps nativefiledialog-extended). It needs no renderer, so it's
-    // safe here, before recomp::start(). Loop until a valid ROM is chosen or the user cancels.
-    if (!have_rom) {
-        bar_user_message(SDL_MESSAGEBOX_INFORMATION,
-            "Beetle Adventure Racing: Recompiled needs your own copy of the original game.\n\n"
-            "Please select your Beetle Adventure Racing (USA) ROM to continue.");
-    }
-    while (!have_rom) {
-        RT64::FileDialog::initialize();
-        std::filesystem::path picked =
-            RT64::FileDialog::getOpenFilename({ RT64::FileFilter{ "Nintendo 64 ROM", "z64,n64,v64" } });
-        RT64::FileDialog::finish();
-
-        if (picked.empty()) {   // user cancelled the dialog
-            bar_user_message(SDL_MESSAGEBOX_ERROR,
-                "No ROM was selected, so Beetle Adventure Racing: Recompiled will now exit.");
-            return EXIT_FAILURE;
-        }
-        have_rom = bar_select_and_report(picked, game_id);
-    }
-#else
+    // No ROM yet: how that is handled depends on which build this is.
+    //
+    // The frontend build must NOT bail out here. Its launcher already owns the decision --
+    // add_start_game_or_load_rom_option() (see src/frontend/bar_frontend.cpp) shows "Load ROM" until
+    // librecomp reports a valid ROM, runs the picker, and calls start_game() itself. Exiting here
+    // would run before the launcher ever appeared, so a fresh install could never reach it: the whole
+    // first-run experience of a released build was a message box saying to pass a path on the command
+    // line. This block used to be guarded on BEETLE_ENABLE_UI, which the bespoke-UI removal in 019305c
+    // left defined by nothing, so the frontend fell through to the headless branch.
+    //
+    // The headless build has no launcher and nothing else will ask, so there it is still a hard stop.
+#ifndef BEETLE_ENABLE_FRONTEND
     if (!have_rom) {
         message_box("No ROM configured. Pass the ROM path as the first argument "
                     "(this build has the in-game picker disabled).");
         return EXIT_FAILURE;
     }
 #endif
+    (void)have_rom;
 
     // Coordinator: the game thread blocks in wait_for_game_started() until start_game() runs. The VI
     // thread only seeds a dummy OSViMode while !is_game_started(); starting before its first tick
