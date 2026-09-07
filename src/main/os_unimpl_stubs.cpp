@@ -323,31 +323,35 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
 
         bar_rt64_set_hud_anchor(((st == 5) && sawSetup && ((phase == 0) || (phase == 3))) ? 1 : 0);
 
-        // Attract/intro frame cap -- OFF by default, because it was measured not to do anything.
+        // Attract/intro frame cap.
         //
-        // currentGameState 2 is the boot attract sequence (the demo car under the title), which plays
-        // faster here than on console. The obvious theory was that the loop runs at 60 where the
-        // console gives it 30, so content that counts its own frames advances twice as fast. Halving
-        // the rate at which the game is handed VI retraces tests that directly, and it is what this
-        // block does when BAR_ATTRACT_HZ is set below 60.
+        // currentGameState 2 is the boot attract sequence: a canned replay of a race, driven by the
+        // game's own race simulation. In this port the demo cars drive too fast and consequently miss
+        // their scripted events -- the sequence loses sync with itself rather than merely looking
+        // quick. That is the signature of a per-frame-stepped simulation being handed twice the
+        // frames it was authored for: an actual race in this port runs its loop at ~30/s, while the
+        // attract runs at ~60/s (measured previously, docs/KNOWN_ISSUES.md).
         //
-        // Measured, headless, timing state 2 from BAR_DBG_STATE (autoplay recipe from
-        // docs/HEADLESS_TESTING.md):
+        // So halve the rate at which the game is given VI retraces while state 2 is on screen, which
+        // steps the demo's simulation at 30 Hz, and restore 60 everywhere else -- menus, races and the
+        // front end are untouched. This changes how often the GAME steps, not how often the host
+        // presents, so it is not a drop to 30 fps of output.
         //
-        //     stock                            72.45 s
-        //     game loop capped to 30 Hz        72.76 s   (+0.4%)
-        //     UV timeline delta x0.5           72.46 s   (+0.01%)
+        // Two measurements bound what this does and does not fix:
         //
-        // So the attract's length is paced by NEITHER the game's frame rate NOR the UV timeline's
-        // delta. The reason the 30 Hz cap changes nothing is worth stating: the divider only changes
-        // how often the GAME is given a retrace message. total_vis and the VI registers keep
-        // advancing at 60, so any timer reading the VI count or wall clock is untouched -- and that
-        // is evidently what times the attract. Whatever makes it feel fast lives there, not here.
+        //   * Car speed: captured at the same wall-clock offset into the attract, the demo car is at
+        //     visibly different points on the lap with the cap on versus off -- it drives slower, as
+        //     intended.
         //
-        // The mechanism is kept because it is the only way to run the game loop at a divided rate and
-        // it cost nothing to leave in, but it defaults to off: at 30 Hz the attract is visibly
-        // choppier and, per the numbers above, no slower. BAR_ATTRACT_HZ=30 re-enables it for state 2;
-        // BAR_VI_DIVIDER=<n> forces a divider in every state. See docs/KNOWN_ISSUES.md.
+        //   * Sequence length: unchanged. State 2 lasts 72.45 s stock, 72.76 s capped, and 72.46 s
+        //     with the UV timeline delta halved. The attract's LENGTH is on a different clock from
+        //     its motion -- the divider only changes how often the game is handed a retrace, while
+        //     total_vis, the VI registers and the wall clock keep advancing at 60. So the demo now
+        //     drives at the right speed but still gets cut off after the same number of real seconds,
+        //     covering less of the lap than before.
+        //
+        // BAR_ATTRACT_HZ overrides the target (60 disables the cap); BAR_VI_DIVIDER=<n> forces a
+        // divider in every state.
         {
             static const int forced = [] {
                 const char* e = std::getenv("BAR_VI_DIVIDER");
@@ -355,7 +359,7 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
             }();
             static const int attract_div = [] {
                 const char* e = std::getenv("BAR_ATTRACT_HZ");
-                const int hz = (e != nullptr) ? std::atoi(e) : 60;   // 60 == no cap
+                const int hz = (e != nullptr) ? std::atoi(e) : 30;   // 60 == no cap
                 return (hz > 0 && hz < 60) ? (60 / hz) : 1;
             }();
 

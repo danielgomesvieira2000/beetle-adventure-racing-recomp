@@ -275,7 +275,7 @@ The boot sequence plays noticeably faster than a reference emulator running the 
 | SI completion pacing (`requeue_si`) | **Refuted.** `BAR_REQUEUE_SI=1` restores stock re-queueing: the menu becomes choppy but the animation speed is unchanged — the signature of correct delta-timing. |
 | PAL/NTSC confusion (PAL runs ~17% slower) | **Refuted** by the user's side-by-side against the same USA ROM. |
 
-### Ruled out: the frame rate itself, and the UV timeline (7 Sep 2026)
+### The attract's motion and its length are on two different clocks (7 Sep 2026)
 
 Daniel asked for the attract sequence to be capped at 30 Hz, on the theory that a game loop handed
 60 frames where the console's retrace request gave it 30 would run frame-counted content at double
@@ -291,27 +291,38 @@ using the autoplay recipe in docs/HEADLESS_TESTING.md:
 | Game loop capped to 30 Hz (`BAR_ATTRACT_HZ=30`) | **72.76 s** (+0.4%) |
 | UV timeline delta halved (`BAR_TIME_SCALE=0.5`) | **72.46 s** (+0.01%) |
 
-**Neither lever moves it.** The attract's length is paced by neither the game's frame rate nor the UV
-timeline's delta, which rules out both of the mechanisms this investigation had been circling.
+**Neither lever moves the length.** That measurement was, however, aimed at the wrong quantity.
+Daniel then specified the actual complaint: it is not that the sequence is short, it is that *the
+demo cars drive too fast and miss their scripted events* -- the attract loses sync with itself. The
+attract is a canned replay run through the game's own race simulation, so what matters is the rate
+that simulation steps at, not how long the segment lasts.
 
-Why the frame cap changes nothing is the useful part: the divider only changes how often the *game*
-is handed a retrace message. `total_vis`, the VI registers and the host's present rate all keep
-advancing at 60, so any timer that reads the VI count or the wall clock is untouched -- and that is
-evidently what times the attract. The next probe should be the game's real-time source
-(`uvClkGetSec` / `osGetTime` / the VI counter), not the frame loop and not the gfx-manager delta.
+Capturing the demo at the same wall-clock offset into the attract, with and without the cap, shows
+the car at visibly different points on the lap -- further along uncapped, still approaching the same
+landmark capped. **So the cap does slow the driving**; the duration metric simply could not see it.
 
-Note this also sharpens the earlier `BAR_TIME_SCALE` result. Scaling the delta visibly changes the
-attract's *motion* but, as measured above, not the segment's *duration* -- so the demo's animation
-and the timer that ends it are on two different clocks.
+The two results together give the shape of the thing: **the attract's motion and its length are on
+different clocks.** Motion steps with the game loop (and with the UV delta, per the older
+`BAR_TIME_SCALE` observation); the segment's length is on the wall clock or the VI count, neither of
+which the divider touches -- `total_vis`, the VI registers and the host's present rate all keep
+advancing at 60 regardless. A consequence worth knowing: with the cap on, the demo drives at the
+right speed but is still cut off after the same number of real seconds, so it covers less of the lap
+than it used to.
 
-The divider is kept (`ultramodern::set_vi_divider`, gated in `src/main/os_unimpl_stubs.cpp`) because
-it is the only way to run the game loop at a divided rate, but it **defaults to off**: at 30 Hz the
-attract is visibly choppier and, per the numbers, no slower. `BAR_ATTRACT_HZ=30` re-enables it for
-state 2; `BAR_VI_DIVIDER=<n>` forces it in every state.
+The cap is therefore **on by default for state 2 only** (`ultramodern::set_vi_divider`, gated in
+`src/main/os_unimpl_stubs.cpp`). Menus, races and the front end keep the full 60.
+`BAR_ATTRACT_HZ=60` disables it; `BAR_VI_DIVIDER=<n>` forces a divider in every state.
 
-**Still missing: a reference number.** Nothing here establishes that 72.45 s is wrong. Timing the
-same attract on the reference emulator would say how much too fast it actually is -- or whether the
-attract is fine and the fast part is the logo/legal screens, which is what the lead below argues.
+**Why 30 is believed to be the right target:** an actual race in this port runs its loop at ~30/s
+while the attract runs at ~60/s (the `BAR_FPS` measurement recorded above). The demo is a race, so
+the game's own race rate is the reference. That reasoning has not been checked against hardware, and
+a headless recipe that reaches a real race would let the two loop rates be compared directly with
+`BAR_DBG_FPS` -- worth doing before treating 30 as settled.
+
+**Still open:** whether the segment being cut off at the same wall-clock length (now covering less of
+the lap) is correct console behaviour or a second bug. If the console's attract shows the *whole*
+demo, then the length timer is wrong too, and it lives on the real-time source (`uvClkGetSec` /
+`osGetTime` / the VI counter) -- not on the frame loop and not on the gfx-manager delta.
 
 ### The strongest remaining lead
 
