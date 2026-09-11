@@ -1,0 +1,7 @@
+__entrypoint_func_uvcontourld_rom_400000 = 0x400000;
+D_uvcontourld_rom_00400C40 = 0x400C40;
+D_uvcontourld_rom_00400C20 = 0x400C20;
+D_uvcontourld_rom_00400C40 = 0x400C40;
+D_uvcontourld_rom_00400C24 = 0x400C24;
+D_uvcontourld_rom_00400C40 = 0x400C40;
+D_uvcontourld_rom_00400C30 = 0x00400C30;

@@ -1,0 +1,191 @@
+import shutil
+import sys
+import subprocess
+
+partial_to_module = {
+    "partial_ai.o": "aimd",
+    "partial_aiedit.o": "aied",
+    "partial_airec.o": "airc",
+    "partial_battle.o": "batl",
+    "partial_bubble.o": "bubl",
+    "partial_cam.o": "camm",
+    "partial_caranim.o": "cara",
+    "partial_caraudio.o": "caud",
+    "partial_cbars.o": "cbar",
+    "partial_demo.o": "demo",
+    "partial_dledit.o": "dled",
+    "partial_env.o": "envm",
+    "partial_envsnd.o": "esnd",
+    "partial_expl.o": "expl",
+    "partial_filerom.o": "filr",
+    "partial_fileux.o": "filu",
+    "partial_filmroll.o": "frol",
+    "partial_flag.o": "flag",
+    "partial_game.o": "game",
+    "partial_gamegui.o": "ggui",
+    "partial_glare.o": "glar",
+    "partial_intro.o": "intr",
+    "partial_letter.o": "lttr",
+    "partial_level1.o": "lev1",
+    "partial_light.o": "lght",
+    "partial_logo.o": "logo",
+    "partial_med.o": "medt",
+    "partial_menuslct.o": "menu",
+    "partial_misc.o": "misc",
+    "partial_motion.o": "motn",
+    "partial_mult1.o": "mp01",
+    "partial_mult2.o": "mp02",
+    "partial_mult3.o": "mp03",
+    "partial_mult4.o": "mp04",
+    "partial_mult5.o": "mp05",
+    "partial_mult6.o": "mp06",
+    "partial_mult7.o": "mp07",
+    "partial_mult8.o": "mp08",
+    "partial_mult9.o": "mp09",
+    "partial_pause.o": "paus",
+    "partial_piece.o": "piec",
+    "partial_plyr.o": "plyr",
+    "partial_powerup.o": "pwup",
+    "partial_profgame.o": "prof",
+    "partial_race.o": "race",
+    "partial_rain.o": "rain",
+    "partial_replay.o": "rply",
+    "partial_results.o": "resu",
+    "partial_ripple.o": "ripl",
+    "partial_rumble.o": "rumb",
+    "partial_scene.o": "scen",
+    "partial_scrn.o": "scrn",
+    "partial_selection.o": "slct",
+    "partial_shadow.o": "shad",
+    "partial_skid.o": "skid",
+    "partial_smack.o": "smak",
+    "partial_snd.o": "sndm",
+    "partial_sparks.o": "spar",
+    "partial_splash.o": "spla",
+    "partial_spray.o": "spry",
+    "partial_tdata.o": "tdta",
+    "partial_ted.o": "tedt",
+    "partial_track1.o": "tk01",
+    "partial_track2.o": "tk02",
+    "partial_track3.o": "tk03",
+    "partial_track4.o": "tk04",
+    "partial_track5.o": "tk05",
+    "partial_track6.o": "tk06",
+    "partial_track7.o": "tk07",
+    "partial_triganim.o": "trig",
+    "partial_txtview.o": "txtv",
+    "partial_ufogame.o": "ufom",
+    "partial_ufo.o": "ufov",
+    "partial_uvaudiomgr_rom.o": "AMGR",
+    "partial_uvbill_rom.o": "BILL",
+    "partial_uvblit_rom.o": "UVBT",
+    "partial_uvcback_rom.o": "CBCK",
+    "partial_uvchannel_rom.o": "CHAN",
+    "partial_uvcmidi_rom.o": "MIDI",
+    "partial_uvcolor_rom.o": "COLR",
+    "partial_uvcontourld_rom.o": "UVCT",
+    "partial_uvcont_rom.o": "CONT",
+    "partial_uvdbg_rom.o": "UDBG",
+    "partial_uvdgeom_rom.o": "DGEO",
+    "partial_uvdobj_rom.o": "DOBJ",
+    "partial_uvdsetld_rom.o": "UVDS",
+    "partial_uvdyn_rom.o": "udyn",
+    "partial_uvear_rom.o": "AEAR",
+    "partial_uvemitter_rom.o": "EMIT",
+    "partial_uvenvld_rom.o": "UVEN",
+    "partial_uvenv_rom.o": "UENV",
+    "partial_uvfmtx_rom.o": "FMTX",
+    "partial_uvfontld_rom.o": "UVFT",
+    "partial_uvfont_rom.o": "FONT",
+    "partial_uvfvec_rom.o": "FVEC",
+    "partial_uvfx_rom.o": "FXFX",
+    "partial_uvgeom_rom.o": "GEOM",
+    "partial_uvgfxmgr_rom.o": "GMGR",
+    "partial_uvgfxstate_rom.o": "STAT",
+    "partial_uvgrph_rom.o": "grph",
+    "partial_uvgui_rom.o": "ugui",
+    "partial_uvimtx_rom.o": "IMTX",
+    "partial_uvintersect_rom.o": "ISCT",
+    "partial_uvisect_rom.o": "isct",
+    "partial_uvjanimld_rom.o": "UVAN",
+    "partial_uvjanim_rom.o": "JANM",
+    "partial_uvled_rom.o": "ULED",
+    "partial_uvlight_rom.o": "LGHT",
+    "partial_uvmath_rom.o": "MATH",
+    "partial_uvmodelld_rom.o": "UVMD",
+    "partial_uvmodel_rom.o": "MODL",
+    "partial_uvpfxld_rom.o": "UVPX",
+    "partial_uvpfx_rom.o": "UPFX",
+    "partial_uvquat_rom.o": "QUAT",
+    "partial_uvquery_rom.o": "QERY",
+    "partial_uvsort_rom.o": "SORT",
+    "partial_uvsprt_rom.o": "SPRT",
+    "partial_uvstring_rom.o": "STRG",
+    "partial_uvterrald_rom.o": "UVTR",
+    "partial_uvterra_rom.o": "TERR",
+    "partial_uvtexanim_rom.o": "TANM",
+    "partial_uvtextureld_rom.o": "UVTX",
+    "partial_uvtexture_rom.o": "TEXT",
+    "partial_uvtexturexref_rom.o": "UVTP",
+    "partial_uvtrackld_rom.o": "UVTT",
+    "partial_uvtseqld_rom.o": "UVTS",
+    "partial_uvtseq_rom.o": "TSEQ",
+    "partial_uvufileld_rom.o": "UVRW",
+    "partial_uvvattr_rom.o": "VATR",
+    "partial_uvvolumeld_rom.o": "UVVL",
+    "partial_victory.o": "vict",
+    "partial_voltest.o": "volt",
+    "partial_weapon.o": "wpon",
+}
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python convPartialModule.py <file> <nonMatchingFlag>")
+        sys.exit(1)
+
+    file_path = sys.argv[1]
+    partialFileName = file_path.split("/")[-1]
+    module = partial_to_module.get(partialFileName)
+    
+    print("Converting:", file_path)
+    subprocess.run(
+        [   
+            "./tools/daisybox/daisybox",
+            file_path,
+            module,
+            "build/kernel.map.json",
+            "linker_scripts/us/module_files/" + partialFileName.split("partial_")[1].split(".")[0] + "_text_reloc_sorts.txt",
+            partialFileName.split("partial_")[1].split(".")[0] + ".o",
+        ],
+        check=True,
+    )
+
+    subprocess.run(
+        [   
+            sys.executable,
+            "./tools/checkModuleHash.py",
+            file_path + ".generated.uvmo",
+            'True' if sys.argv[2] == "True" else 'False'
+        ],
+        check=True,
+    )
+
+    objectFileName = partialFileName.split("partial_")[1].split(".")[0] + ".o"
+
+    print("Objcopy " + file_path + ".generated.uvmo" + " -> build/bin/us/" + objectFileName)
+
+    objcopyCmd =  [   
+            "mips-linux-gnu-objcopy",
+            "-I",
+            "binary",
+            "-O",
+            "elf32-big",
+            file_path + ".generated.uvmo",
+            "build/bin/us/" + objectFileName
+        ]
+
+    subprocess.run(
+        objcopyCmd,
+        check=True,
+    )

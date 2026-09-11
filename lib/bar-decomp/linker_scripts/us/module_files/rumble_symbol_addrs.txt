@@ -1,0 +1,12 @@
+__entrypoint_func_rumble_400000 = 0x400000;
+D_rumble_00400458 = 0x400458;
+D_rumble_004004D8 = 0x4004D8;
+D_rumble_004004D8 = 0x4004D8;
+D_rumble_00400558 = 0x400558;
+D_rumble_00400568 = 0x400568;
+D_rumble_00400458 = 0x400458;
+D_rumble_004004D8 = 0x4004D8;
+D_rumble_00400558 = 0x400558;
+D_rumble_00400568 = 0x400568;
+D_rumble_004003E0 = 0x4003E0;
+B_rumble_00400450 = 0x00400450;

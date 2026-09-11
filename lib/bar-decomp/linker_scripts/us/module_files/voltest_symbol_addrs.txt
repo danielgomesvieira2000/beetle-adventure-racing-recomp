@@ -1,0 +1,8 @@
+__entrypoint_func_voltest_400000 = 0x400000;
+D_voltest_00400598 = 0x400598;
+D_voltest_00400594 = 0x400594;
+D_voltest_00400594 = 0x400594;
+D_voltest_00400594 = 0x400594;
+D_voltest_00400598 = 0x400598;
+B_voltest_00400590 = 0x00400590;
+D_voltest_00400580 = 0x00400580;

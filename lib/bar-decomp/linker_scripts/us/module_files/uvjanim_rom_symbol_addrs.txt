@@ -1,0 +1,13 @@
+__entrypoint_func_uvjanim_rom_400000 = 0x400000;
+D_uvjanim_rom_00401760 = 0x401760;
+D_uvjanim_rom_00401764 = 0x401764;
+D_uvjanim_rom_00401768 = 0x401768;
+D_uvjanim_rom_0040176C = 0x40176C;
+D_uvjanim_rom_00401770 = 0x401770;
+D_uvjanim_rom_00401768 = 0x401768;
+D_uvjanim_rom_0040176C = 0x40176C;
+D_uvjanim_rom_00401764 = 0x401764;
+D_uvjanim_rom_00401770 = 0x401770;
+D_uvjanim_rom_00401760 = 0x401760;
+D_uvjanim_rom_00401768 = 0x401768;
+D_uvjanim_rom_00401750 = 0x00401750;

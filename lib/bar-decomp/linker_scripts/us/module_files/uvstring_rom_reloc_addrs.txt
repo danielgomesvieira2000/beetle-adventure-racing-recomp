@@ -1,0 +1,14 @@
+rom:0x64 reloc:MIPS_HI16 symbol:uvStrcpy
+rom:0x7C reloc:MIPS_LO16 symbol:uvStrcpy
+rom:0x68 reloc:MIPS_HI16 symbol:func_uvstring_rom_0040006C
+rom:0x80 reloc:MIPS_LO16 symbol:func_uvstring_rom_0040006C
+rom:0x6C reloc:MIPS_HI16 symbol:uvStrChr
+rom:0x84 reloc:MIPS_LO16 symbol:uvStrChr
+rom:0x70 reloc:MIPS_HI16 symbol:uvStrlen
+rom:0x88 reloc:MIPS_LO16 symbol:uvStrlen
+rom:0x74 reloc:MIPS_HI16 symbol:uvStrcmp
+rom:0x8C reloc:MIPS_LO16 symbol:uvStrcmp
+rom:0x78 reloc:MIPS_HI16 symbol:uvSprintf
+rom:0x90 reloc:MIPS_LO16 symbol:uvSprintf
+rom:0xDA4 reloc:MIPS_32 symbol:__entrypoint_func_uvStringEntryPoint
+rom:0x58 reloc:MIPS_26 symbol:uvUpdateFileAllocPtr

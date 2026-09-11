@@ -1,0 +1,8 @@
+__entrypoint_func_sparks_400000 = 0x400000;
+D_sparks_00400454 = 0x400454;
+D_sparks_00400454 = 0x400454;
+D_sparks_00400454 = 0x400454;
+D_sparks_00400454 = 0x400454;
+D_sparks_00400440 = 0x400440;
+D_sparks_00400440 = 0x400440;
+B_sparks_00400450 = 0x00400450;

@@ -1,0 +1,5 @@
+__entrypoint_func_uvufileld_rom_400000 = 0x400000;
+sCopyFileDataFlag = 0x400150;
+sCopyFileDataFlag = 0x400150;
+sCopyFileDataFlag = 0x400150;
+D_uvufileld_rom_00400140 = 0x00400140;

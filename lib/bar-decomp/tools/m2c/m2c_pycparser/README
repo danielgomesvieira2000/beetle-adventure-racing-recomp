@@ -1,0 +1,6 @@
+Vendored copy of https://github.com/eliben/pycparser, with some patches to accept various C syntax extensions.
+Upstream commit: b5c6024ff01346b194e43435af71a210b1e8e2ae ("Update _ast_gen.py to be in sync with c_ast.py (#582)", Sep 16 2025)
+
+Changes inspired by https://github.com/inducer/pycparserext.
+
+To update lextab/yacctab: `rm -f *tab.py && python3 _build_tables.py`

@@ -1,0 +1,13 @@
+__entrypoint_func_ufogame_400000 = 0x400000;
+D_ufogame_00400598 = 0x400598;
+D_ufogame_00400594 = 0x400594;
+D_ufogame_00400570 = 0x400570;
+D_ufogame_00400570 = 0x400570;
+D_ufogame_00400598 = 0x400598;
+D_ufogame_00400598 = 0x400598;
+D_ufogame_00400594 = 0x400594;
+D_ufogame_00400550 = 0x400550;
+D_ufogame_00400554 = 0x400554;
+D_ufogame_0040055C = 0x40055C;
+D_ufogame_00400564 = 0x400564;
+B_ufogame_00400590 = 0x00400590;

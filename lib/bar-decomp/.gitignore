@@ -1,0 +1,67 @@
+# Ignore some tools
+tools/n64crc
+
+# Ignore OS and IDE folders
+.vscode/
+__pycache__/
+.venv/
+
+# Ignore the baserom so it doesn't get accidentally added
+*.z64
+*.n64
+*.rom
+*.eeprom
+*.pak
+
+# Automatically generated folders should be ignored
+build/
+expected/
+asm/
+src/assets/*
+include/assets/*
+bin/
+mio0/
+
+linker_scripts/us/beetleadventurerac.d
+linker_scripts/us/beetleadventurerac.ld
+
+# Automatically generated files, so they should be ignored
+*_auto.ld
+
+# CTX files for m2c should be ignored as we generate those
+ctx.c
+ctx_includes.c
+ctx.c.m2c
+venv/*
+
+patched_modules/*
+report.json
+*.b64
+rom.b64
+
+# ---- BAR-decomp fork additions ----
+# Compiled tool binaries (built by `make dependencies`)
+tools/daisybox/daisybox
+tools/daisybox/genForm0
+tools/genForm0
+tools/moduleTool
+
+# Build-generated linker scripts
+linker_scripts/us/kernel.ld
+linker_scripts/us/kernel_link_scripts_syms.txt
+linker_scripts/us/form0_vars.txt
+linker_scripts/us/recomp.ld
+
+# Generated progress reports & analysis output
+report*.json
+score_functions.json
+
+# Editor / backup / patch leftovers
+*.bak
+*.bak.*
+*.orig
+*.rej
+nonmatchings/
+.idea/
+_test_uvdyn.c
+progress/

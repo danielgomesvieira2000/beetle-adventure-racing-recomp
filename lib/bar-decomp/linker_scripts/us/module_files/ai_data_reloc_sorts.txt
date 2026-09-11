@@ -1,0 +1,5 @@
+rom: 0x5c4 order: 0
+rom: 0x5c8 order: 1
+rom: 0x5cc order: 2
+rom: 0x5d0 order: 3
+rom: 0x6dc order: 4

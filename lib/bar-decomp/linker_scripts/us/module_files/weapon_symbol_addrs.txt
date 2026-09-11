@@ -1,0 +1,7 @@
+__entrypoint_func_weapon_400000 = 0x400000;
+D_weapon_00400184 = 0x400184;
+D_weapon_00400198 = 0x400198;
+D_weapon_00400184 = 0x400184;
+D_weapon_00400184 = 0x400184;
+B_weapon_00400180 = 0x00400180;
+D_weapon_00400170 = 0x00400170;

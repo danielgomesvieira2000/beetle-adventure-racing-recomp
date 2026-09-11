@@ -44,8 +44,8 @@ host app but **cannot** build MIPS patches (use Homebrew LLVM 18.x for those).
 
 ## One-time setup
 ```bash
-# 1. Recursive submodules (RT64 contrib, N64ModernRuntime, ...).
-git submodule update --init --recursive       # (or clone with --recurse-submodules)
+# 1. Nothing to fetch: every library lives in lib/ as ordinary files of this repository.
+#    `git clone` is complete on its own -- there are no submodules to initialise.
 # 2. Build the recompiler tools + the per-module ELF, then recompile to C:
 #    - build N64Recomp/RSPRecomp           (scripts/setup.*)
 #    - (WSL) cd ~/projects/bar-decomp && source .venv/bin/activate && make recomp

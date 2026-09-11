@@ -102,8 +102,8 @@ live bug reports — remain in `docs/` alongside it.
 
 ## Relationship to the decomp
 
-This repo vendors the **[BeetleDecomp](https://github.com/bryankruman/BeetleDecomp)** project as a
-submodule at `lib/bar-decomp`. Two things are worth knowing up front:
+This repo carries a copy of the **[BeetleDecomp](https://github.com/bryankruman/BeetleDecomp)**
+project at `lib/bar-decomp`. Two things are worth knowing up front:
 
 **The recomp does *not* compile the decomp's C.** Static recompilation translates the original
 ROM's MIPS *machine code* into C automatically; the decomp's hand-written C is never built into the
@@ -181,14 +181,31 @@ beetle-adventure-racing-recomp/
 ├── scripts/               # setup / fetch-elf / gen-overlays / fix-recompiled helpers
 ├── assets/  icons/        # bundled app assets
 ├── elf/  syms/            # decomp ELF + patch symbol TOMLs land here (git-ignored)
-└── lib/                   # git submodules:
+└── lib/                   # vendored source — ordinary files, NOT submodules:
     ├── bar-decomp                 # BeetleDecomp — symbols, headers, module/reloc layout (source ref)
     ├── N64Recomp                  # the static recompiler (MIPS → C)
-    ├── N64ModernRuntime           # librecomp (CPU) + ultramodern (OS/audio/input)   [bryankruman fork]
-    ├── rt64                       # RT64 renderer (D3D12 / Vulkan / Metal)            [bryankruman fork]
+    ├── N64ModernRuntime           # librecomp (CPU) + ultramodern (OS/audio/input)
+    ├── rt64                       # RT64 renderer (D3D12 / Vulkan / Metal)
     └── RecompFrontend             # launcher / settings / input UI (recompui + recompinput)
-                                   #   -> pulls RmlUi, lunasvg and freetype as its own submodules
+                                   #   -> carries RmlUi, lunasvg and freetype with it
 ```
+
+### Vendored, not submoduled
+
+**This repository is standalone.** There is no `.gitmodules`, nothing to `git submodule update`, and
+no dependency on any fork staying up: `git clone` gives you everything needed to build. Every library
+above is committed here as ordinary source.
+
+That is a deliberate trade, and the cost is worth stating. Pulling a fix from any of these upstreams
+is now a manual copy rather than a pointer bump, and the local changes this port needs — the RT64
+renderer's BAR-specific code, `librecomp`'s Controller Pak support, RecompFrontend's automatic
+controller assignment — live here rather than as patches on top of someone else's branch. What is
+bought is that the project depends on nobody: no fork can disappear, go stale or diverge underneath
+it.
+
+**Every one of them keeps its own licence and its own authors.** See
+[Credits](#credits) below and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); vendoring changes
+where the code sits, not who wrote it.
 
 ## Quickstart
 
@@ -231,7 +248,8 @@ The live checklist is **[docs/TODO.md](docs/TODO.md)**; per-item status and resu
 
 **AGPL-3.0**, inherited from the BeetleDecomp data this port derives from. See
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the dependency-license analysis and why
-AGPL is the correct umbrella. Vendored dependencies in `lib/` retain their own licenses.
+AGPL is the correct umbrella. The vendored libraries in `lib/` retain their own licences and their
+own copyright holders — copying them into this repository changes neither.
 **Distribute no game assets.**
 
 ## Credits
@@ -239,6 +257,13 @@ AGPL is the correct umbrella. Vendored dependencies in `lib/` retain their own l
 Nothing here starts from scratch. A static-recompilation port is mostly other people's work, and the
 short version is: the recompiler, the runtime, the renderer, the decompilation and the original
 reverse engineering were all done by other people, and this repo is a thin layer on top of them.
+
+**Most of the code in this repository was written by the people below, not by this project.** It is
+committed here rather than pulled in as submodules (see
+[Vendored, not submoduled](#vendored-not-submoduled)), which makes the clone self-contained and
+changes nothing about who holds copyright in it or under what licence it is offered. Where this port
+has modified one of them, the modification is described in `docs/` and the original is credited here
+all the same.
 
 ### This port
 

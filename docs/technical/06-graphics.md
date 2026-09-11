@@ -351,7 +351,7 @@ Graphics settings persist to `graphics.json` in the config directory and are pus
 before `recomp::start()`.
 
 The **Draw Distance** option is registered from `src/frontend/bar_frontend.cpp`, not from
-RecompFrontend, because that submodule is upstream and this port cannot push to it —
+RecompFrontend, because that library is upstream and this port does not modify it there —
 `create_graphics_tab()` returns the tab's `Config`, so an extra option can simply be added to it. Two
 ordering constraints make it work:
 

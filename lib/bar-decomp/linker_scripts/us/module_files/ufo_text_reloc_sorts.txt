@@ -1,0 +1,6 @@
+rom: 0x24 order: 0
+rom: 0x30 order: 1
+rom: 0x28 order: 2
+rom: 0x34 order: 3
+rom: 0x2c order: 4
+rom: 0x38 order: 5

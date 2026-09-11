@@ -1,0 +1,66 @@
+name: Build & Progress Report
+
+# Builds the matching ROM and uploads a decomp.dev-compatible progress report.
+#
+# REQUIRES a repository secret BASEROM_US_Z64_BASE64 (base64 of your legally-dumped USA ROM):
+#   base64 -w0 baserom.us.z64 > rom.b64   # then paste into the secret
+# The ROM is decoded only inside the runner and is never committed. Without the secret the
+# build cannot run (no copyrighted data is stored in the repo).
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04   # binutils 2.42 + Python 3.12 (required — see README)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            build-essential binutils-mips-linux-gnu python3 python3-pip python3-venv python3-dev \
+            ninja-build clang-format clang-tidy libcjson-dev libzstd-dev binutils-dev \
+            libpng-dev zlib1g-dev curl pkg-config
+
+      - name: Python venv + toolchain
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          make dependencies
+
+      - name: Restore base ROM from secret
+        env:
+          ROM_B64: ${{ secrets.BASEROM_US_Z64_BASE64 }}
+        run: |
+          if [ -z "$ROM_B64" ]; then
+            echo "::error::Secret BASEROM_US_Z64_BASE64 not set — cannot build. See .github/workflows/progress.yml"
+            exit 1
+          fi
+          echo "$ROM_B64" | base64 -d > baserom.us.z64
+          echo "expected e5ab4d226c08d22f68a2edcc48870203e67454b8"
+          sha1sum baserom.us.z64
+
+      - name: Extract & build (matching)
+        run: |
+          . .venv/bin/activate
+          make extract
+          make -j"$(nproc)"
+          test "$(sha1sum build/beetleadventurerac.us.z64 | cut -d' ' -f1)" = \
+               "e5ab4d226c08d22f68a2edcc48870203e67454b8"
+
+      - name: Generate progress report
+        run: |
+          . .venv/bin/activate
+          scripts/gen_report.sh report.json
+
+      - name: Upload progress report
+        uses: actions/upload-artifact@v4
+        with:
+          name: us_report          # decomp.dev expects <version>_report
+          path: report.json

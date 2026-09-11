@@ -1,34 +1,18 @@
 #!/usr/bin/env bash
-# Bootstrap beetle-adventure-racing-recomp: fetch dependencies and build the recompiler tools.
+# Bootstrap beetle-adventure-racing-recomp: build the recompiler tools.
 # Run once after cloning; safe to re-run.
+#
+# There is nothing to fetch. This project is STANDALONE: every library it builds against lives under
+# lib/ as ordinary files of this repository, not as a git submodule. A clone is complete, and
+# `git submodule update` has nothing to do here. See README.md ("Vendored, not submoduled") for what
+# each library is, where it came from and who wrote it.
+#
+# One consequence worth knowing: the local change RecompFrontend needed -- the
+# players::auto_assign_controllers that scripts/patch-recompinput.py used to add after every
+# submodule update -- is now simply part of the vendored source. That script is kept because it is
+# the record of what was changed and why, and it is idempotent, but it has nothing left to do.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-
-add_sub() { # add_sub <url> <path>
-  if [ -f "$2/CMakeLists.txt" ] || [ -e "$2/.git" ]; then
-    echo ">> $2 already present, skipping"
-  else
-    git submodule add -f "$1" "$2"
-  fi
-}
-
-echo ">> Adding submodules..."
-add_sub https://github.com/N64Recomp/N64ModernRuntime.git lib/N64ModernRuntime
-add_sub https://github.com/rt64/rt64.git                  lib/rt64
-add_sub https://github.com/mikke89/RmlUi.git              lib/RmlUi
-add_sub https://github.com/sammycage/lunasvg.git          lib/lunasvg
-# N64Recomp arrives transitively via N64ModernRuntime, but we also need the
-# standalone recompiler executables, so vendor it directly too:
-add_sub https://github.com/bryankruman/N64Recomp.git        lib/N64Recomp
-
-echo ">> Updating submodules recursively..."
-git submodule update --init --recursive
-
-# RecompFrontend's input layer only assigns controllers to players through a modal, which leaves a
-# plugged-in pad driving nothing until someone has been through it. See the script for the whole
-# story. Idempotent, and it must run after every submodule update, which would revert it.
-echo ">> Patching RecompFrontend/recompinput..."
-python3 scripts/patch-recompinput.py
 
 echo ">> Building N64Recomp + RSPRecomp (Release)..."
 cmake -S lib/N64Recomp -B lib/N64Recomp/build -G Ninja -DCMAKE_BUILD_TYPE=Release

@@ -1,0 +1,2 @@
+__entrypoint_func_uvblit_rom_400000 = 0x400000;
+D_uvblit_rom_004006F0 = 0x004006F0;

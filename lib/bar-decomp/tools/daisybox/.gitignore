@@ -1,0 +1,14 @@
+include/bfd.h
+include/bfdlink.h
+include/config.h
+
+libs/libbfd.a
+libs/libcjson.a
+libs/libiberty.a
+libs/libopcodes.a
+libs/libsframe.a
+libs/libz.a
+
+
+
+build/*

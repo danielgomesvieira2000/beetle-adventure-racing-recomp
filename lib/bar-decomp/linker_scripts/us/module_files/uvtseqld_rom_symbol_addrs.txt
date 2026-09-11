@@ -1,0 +1,5 @@
+__entrypoint_func_uvtseqld_rom_400000 = 0x400000;
+D_uvtseqld_rom_00400320 = 0x400320;
+D_uvtseqld_rom_00400320 = 0x400320;
+D_uvtseqld_rom_00400320 = 0x400320;
+D_uvtseqld_rom_00400310 = 0x00400310;

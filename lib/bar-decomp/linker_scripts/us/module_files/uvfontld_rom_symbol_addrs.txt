@@ -1,0 +1,3 @@
+__entrypoint_func_uvfontld_rom_400000 = 0x400000;
+D_uvfontld_rom_004003DC = 0x4003DC;
+D_uvfontld_rom_004003B0 = 0x004003B0;

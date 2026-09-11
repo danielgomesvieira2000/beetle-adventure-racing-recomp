@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#ifndef BAR_MODULE_H
+#define BAR_MODULE_H
+/* Module exports */
+#include "uvstring_rom.h"
+#include "uvsort_rom.h"
+#include "uvufileld_rom.h"
+#include "uvtseqld_rom.h"
+#include "uvvolumeld_rom.h"
+#include "uvmath_rom.h"
+#include "uvfvec_rom.h"
+#include "uvimtx_rom.h"
+#include "uvfmtx_rom.h"
+#include "uvgfxmgr_rom.h"
+#include "uvdbg_rom.h"
+#include "uvsprt_rom.h"
+#include "uvtexture_rom.h"
+#include "uvdgeom_rom.h"
+#include "uvcback_rom.h"
+#include "uvquat_rom.h"
+#include "uvblit_rom.h"
+#include "uvear_rom.h"
+#include "uvdsetld_rom.h"
+#include "uvgfxstate_rom.h"
+#include "uvfont_rom.h"
+#include "uvfontld_rom.h"
+#include "uvaudiomgr_rom.h"
+#include "uvcmidi_rom.h"
+#include "uvemitter_rom.h"
+#include "uvchannel_rom.h"
+#include "uvcolor_rom.h"
+#include "uvtseq_rom.h"
+#include "uvvattr_rom.h"
+#include "uvjanimld_rom.h"
+#include "uvjanim_rom.h"
+#include "ripple.h"
+#include "intro.h"
+#include "track7.h"
+#include "fileux.h"
+#include "weapon.h"
+#define MODULE_ENTRY_POINT(func) __entrypoint_##func
+
+#endif /* BAR_MODULE_H */

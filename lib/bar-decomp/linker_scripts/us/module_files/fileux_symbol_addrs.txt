@@ -1,0 +1,14 @@
+__entrypoint_func_fileux_400000 = 0x400000;
+D_fileux_00400CF8 = 0x400CF8;
+D_fileux_00400C80 = 0x400C80; //type:jtbl
+D_fileux_00400CF8 = 0x400CF8;
+D_fileux_00400CF8 = 0x400CF8;
+D_fileux_00400CF8 = 0x400CF8;
+D_fileux_00400CF8 = 0x400CF8;
+D_fileux_00400CF8 = 0x400CF8;
+D_fileux_00400EF8 = 0x400EF8;
+D_fileux_00400EF8 = 0x400EF8;
+D_fileux_00400EF8 = 0x400EF8;
+D_fileux_00400EF8 = 0x400EF8;
+B_fileux_00400CF0 = 0x00400CF0;
+D_fileux_00400CE0 = 0x00400CE0;

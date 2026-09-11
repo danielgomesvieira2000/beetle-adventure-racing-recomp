@@ -1,0 +1,5 @@
+__entrypoint_func_uvvattr_rom_400000 = 0x400000;
+D_uvvattr_rom_004012A0 = 0x4012A0;
+D_uvvattr_rom_004012A0 = 0x4012A0;
+D_uvvattr_rom_004012A0 = 0x4012A0;
+D_uvvattr_rom_00401290 = 0x00401290;

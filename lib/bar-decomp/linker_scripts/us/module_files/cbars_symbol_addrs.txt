@@ -1,0 +1,14 @@
+__entrypoint_func_cbars_400000 = 0x400000;
+D_cbars_00400510 = 0x400510;
+D_cbars_00400514 = 0x400514;
+D_cbars_00400530 = 0x400530;
+D_cbars_00400534 = 0x400534;
+D_cbars_00400538 = 0x400538;
+D_cbars_0040053C = 0x40053C;
+D_cbars_00400558 = 0x400558;
+D_cbars_0040055C = 0x40055C;
+D_cbars_00400560 = 0x400560;
+D_cbars_00400514 = 0x400514 // type:jtbl
+D_cbars_0040053C = 0x40053C // type:jtbl
+B_cbars_00400580 = 0x00400580;
+D_cbars_00400570 = 0x00400570;

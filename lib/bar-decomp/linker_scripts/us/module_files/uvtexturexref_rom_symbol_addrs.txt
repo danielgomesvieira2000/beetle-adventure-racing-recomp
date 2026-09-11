@@ -1,0 +1,2 @@
+__entrypoint_func_uvtexturexref_rom_400000 = 0x400000;
+D_uvtexturexref_rom_00400200 = 0x00400200;

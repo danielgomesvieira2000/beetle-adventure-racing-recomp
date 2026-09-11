@@ -1,0 +1,2 @@
+__entrypoint_func_uvdsetld_rom_400000 = 0x400000;
+D_uvdsetld_rom_00400260 = 0x00400260;

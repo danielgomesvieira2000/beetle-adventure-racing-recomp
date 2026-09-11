@@ -1,0 +1,12 @@
+rom:0x64 reloc:MIPS_HI16 symbol:func_mult7_004000D4
+rom:0x70 reloc:MIPS_LO16 symbol:func_mult7_004000D4
+rom:0x68 reloc:MIPS_HI16 symbol:func_mult7_004000DC
+rom:0x74 reloc:MIPS_LO16 symbol:func_mult7_004000DC
+rom:0x144 reloc:MIPS_32 symbol:__entrypoint_func_mult7_400000
+rom:0x58 reloc:MIPS_26 symbol:uvUpdateFileAllocPtr
+rom:0x80 reloc:MIPS_26 symbol:uvLoadModule
+rom:0x94 reloc:MIPS_26 symbol:uvLoadModule
+rom:0xA8 reloc:MIPS_26 symbol:uvLoadModule
+rom:0xBC reloc:MIPS_26 symbol:uvLoadModule
+rom:0xD0 reloc:MIPS_26 symbol:uvLoadModule
+rom:0x108 reloc:MIPS_26 symbol:uvUnloadModule

@@ -1,0 +1,2 @@
+__entrypoint_func_uvtrackld_rom_400000 = 0x400000;
+D_uvtrackld_rom_00400220 = 0x00400220;

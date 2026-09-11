@@ -1,30 +1,16 @@
-# Bootstrap beetle-adventure-racing-recomp on Windows: fetch deps and build the recompiler tools.
+# Bootstrap beetle-adventure-racing-recomp on Windows: build the recompiler tools.
+#
+# There is nothing to fetch. This project is STANDALONE: every library it builds against lives under
+# lib/ as ordinary files of this repository, not as a git submodule. A clone is complete, and
+# `git submodule update` has nothing to do here. See README.md ("Vendored, not submoduled") for what
+# each library is, where it came from and who wrote it.
+#
+# One consequence worth knowing: the local change RecompFrontend needed -- the
+# players::auto_assign_controllers that scripts/patch-recompinput.py used to add after every
+# submodule update -- is now simply part of the vendored source. That script is kept because it is
+# the record of what was changed and why, and it is idempotent, but it has nothing left to do.
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
-
-function Add-Sub($url, $path) {
-  if ((Test-Path (Join-Path $path "CMakeLists.txt")) -or (Test-Path (Join-Path $path ".git"))) {
-    Write-Host ">> $path already present, skipping"
-  } else {
-    git submodule add -f $url $path
-  }
-}
-
-Write-Host ">> Adding submodules..."
-Add-Sub "https://github.com/N64Recomp/N64ModernRuntime.git" "lib/N64ModernRuntime"
-Add-Sub "https://github.com/rt64/rt64.git"                  "lib/rt64"
-Add-Sub "https://github.com/mikke89/RmlUi.git"              "lib/RmlUi"
-Add-Sub "https://github.com/sammycage/lunasvg.git"          "lib/lunasvg"
-Add-Sub "https://github.com/N64Recomp/N64Recomp.git"        "lib/N64Recomp"
-
-Write-Host ">> Updating submodules recursively..."
-git submodule update --init --recursive
-
-# RecompFrontend's input layer only assigns controllers to players through a modal, which leaves a
-# plugged-in pad driving nothing until someone has been through it. See the script for the whole
-# story. Idempotent, and it must run after every submodule update, which would revert it.
-Write-Host ">> Patching RecompFrontend/recompinput..."
-python scripts/patch-recompinput.py
 
 Write-Host ">> Building N64Recomp + RSPRecomp (Release)..."
 cmake -S lib/N64Recomp -B lib/N64Recomp/build -G Ninja -DCMAKE_BUILD_TYPE=Release

@@ -1,0 +1,2 @@
+__entrypoint_func_uvgrph_rom_400000 = 0x400000;
+D_uvgrph_rom_004006C0 = 0x004006C0;

@@ -19,7 +19,7 @@ recomp.ld ┘   (per-module layout)     (elf/recomp.elf)   (…-recomp.toml)    
 
 Ordered build steps, each depending on the last:
 
-1. `git submodule update --init --recursive`
+1. `git clone` (there are no submodules; every library is committed under `lib/`)
 2. Build the recompiler → `N64Recomp.exe`, `RSPRecomp.exe` at the repo root (`scripts/setup.sh` / `.ps1`)
 3. (WSL) `make extract && make -j6` in the decomp — must print `build/beetleadventurerac.us.z64: OK`
 4. (WSL) `make recomp` → `build/recomp.elf`
@@ -212,7 +212,7 @@ The generated `rsp/aspMain.cpp` also needs the `$zero`-load codegen fixup, which
 
 ## Building the recompiler
 
-`scripts/setup.sh` adds the submodules, updates them recursively, builds N64Recomp and RSPRecomp in
+`scripts/setup.sh` builds N64Recomp and RSPRecomp in
 Release, and copies the executables to the repo root. N64Recomp builds natively on Windows now — it
 does not need WSL, unlike the decomp and the MIPS patches.
 

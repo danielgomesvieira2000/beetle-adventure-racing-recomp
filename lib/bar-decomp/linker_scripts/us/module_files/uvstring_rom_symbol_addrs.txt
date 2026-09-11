@@ -1,0 +1,12 @@
+__entrypoint_func_uvStringEntryPoint = 0x400000;
+uvStrChr = 0x400074;
+uvStrlen = 0x4000C4;
+uvStrcmp = 0x4000FC;
+_uvStrFormatInt = 0x400298;
+_uvStrFormatFloat = 0x4005D4;
+_uvStrDigitToChar = 0x400804;
+_uvStrCharToDigit = 0x40084C;
+uvSprintf = 0x40087C;
+uvAtoi = 0x400C80;
+func_uvstring_rom_00400D08 = 0x400D08;
+D_uvstring_rom_00400D50 = 0x00400D50;

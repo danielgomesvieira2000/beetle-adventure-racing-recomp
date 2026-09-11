@@ -250,7 +250,7 @@ recompinput has no concept of, and it is still the whole input path in the headl
 there is no recompinput to ask. `#ifdef BEETLE_ENABLE_FRONTEND` picks between them in three places:
 `bar_poll_keyboard`, `bar_port_connected` and `input_set_rumble`.
 
-### Player assignment, and the one local patch to a submodule
+### Player assignment, and the one local change to RecompFrontend
 
 RecompFrontend assigns pads to players exactly one way: the Controls tab's "Assign players" button
 opens a modal and each player presses a button on the pad they want. Until someone has been through
@@ -266,10 +266,12 @@ the controller profile, so the keys and the pad both play without either having 
 patch refuses to run while a manual assignment is open, so the modal still wins for anyone who wants
 to choose.
 
-The patch is **scripted and idempotent because it touches a submodule**: `git submodule update`
-reverts it, and the build then fails to link with nothing pointing at what was lost.
-`scripts/setup.sh` and `scripts/setup.ps1` run it. This mirrors `wave-race-64-recomp`, which needed
-the same function for the same reason.
+It was written as a script — `scripts/patch-recompinput.py` — because RecompFrontend was a submodule
+at the time, and `git submodule update` reverted the change silently, after which the build failed to
+link with nothing pointing at what was lost. The library is now committed into this repository as
+ordinary source, so the change simply stays and the script has nothing left to do; it is kept as the
+record of what was changed and why. This mirrors `wave-race-64-recomp`, which needed the same
+function for the same reason.
 
 ## Controller Pak and Rumble Pak
 

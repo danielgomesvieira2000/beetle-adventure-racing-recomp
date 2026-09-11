@@ -1,0 +1,16 @@
+__entrypoint_func_menuslct_400000 = 0x400000;
+D_menuslct_00401660 = 0x401660;
+D_menuslct_00401664 = 0x401664;
+D_menuslct_00401668 = 0x401668;
+D_menuslct_0040166C = 0x40166C;
+D_menuslct_00401674 = 0x401674;
+D_menuslct_00401670 = 0x401670;
+D_menuslct_00401674 = 0x401674;
+D_menuslct_00401670 = 0x401670;
+D_menuslct_00401674 = 0x401674;
+D_menuslct_00401670 = 0x401670;
+D_menuslct_00401678 = 0x401678;
+D_menuslct_00401678 = 0x401678;
+D_menuslct_00401678 = 0x401678;
+D_menuslct_00401678 = 0x401678;
+B_menuslct_00401690 = 0x00401690;

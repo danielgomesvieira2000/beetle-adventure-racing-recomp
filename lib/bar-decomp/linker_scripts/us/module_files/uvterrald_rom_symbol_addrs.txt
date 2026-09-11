@@ -1,0 +1,8 @@
+__entrypoint_func_uvterrald_rom_400000 = 0x400000;
+D_uvterrald_rom_00400A90 = 0x400A90;
+D_uvterrald_rom_00400A94 = 0x400A94;
+D_uvterrald_rom_00400A90 = 0x400A90;
+D_uvterrald_rom_00400A90 = 0x400A90;
+D_uvterrald_rom_00400A70 = 0x400A70;
+D_uvterrald_rom_00400A74 = 0x400A74;
+D_uvterrald_rom_00400A80 = 0x00400A80;

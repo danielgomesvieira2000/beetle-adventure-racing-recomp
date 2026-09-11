@@ -1,0 +1,10 @@
+rom:0x64 reloc:MIPS_HI16 symbol:func_track7_00400094
+rom:0x70 reloc:MIPS_LO16 symbol:func_track7_00400094
+rom:0x68 reloc:MIPS_HI16 symbol:func_track7_0040009C
+rom:0x74 reloc:MIPS_LO16 symbol:func_track7_0040009C
+rom:0x6C reloc:MIPS_HI16 symbol:D_track7_004000B0
+rom:0x78 reloc:MIPS_LO16 symbol:D_track7_004000B0
+rom:0x114 reloc:MIPS_32 symbol:__entrypoint_func_track7_400000
+rom:0x58 reloc:MIPS_26 symbol:uvUpdateFileAllocPtr
+rom:0x90 reloc:MIPS_26 symbol:uvLoadModule
+rom:0xC8 reloc:MIPS_26 symbol:uvUnloadModule

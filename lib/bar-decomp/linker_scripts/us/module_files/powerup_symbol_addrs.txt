@@ -1,0 +1,11 @@
+__entrypoint_func_powerup_400000 = 0x400000;
+D_powerup_004004D4 = 0x4004D4;
+D_powerup_004004E8 = 0x4004E8;
+D_powerup_004004D4 = 0x4004D4;
+D_powerup_004004D4 = 0x4004D4;
+D_powerup_004004D4 = 0x4004D4;
+D_powerup_004003C0 = 0x4003C0;
+D_powerup_004003C0 = 0x4003C0;
+D_powerup_004003C0 = 0x4003C0;
+D_powerup_004003C0 = 0x4003C0;
+B_powerup_004004D0 = 0x004004D0;

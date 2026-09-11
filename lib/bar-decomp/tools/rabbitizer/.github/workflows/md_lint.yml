@@ -1,0 +1,17 @@
+name: Lint markdown files
+
+# Build on every branch push, tag push, and pull request change:
+on: [push, pull_request]
+
+jobs:
+  checks:
+    runs-on: ubuntu-22.04
+    name: Lint md files
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@main
+
+    - name: Lint markdown files
+      uses: articulate/actions-markdownlint@v1.1.0
+      with:
+        config: .markdownlint.jsonc

@@ -1,0 +1,16 @@
+rom:0x64 reloc:MIPS_HI16 symbol:func_uvgrph_rom_0040033C
+rom:0x80 reloc:MIPS_LO16 symbol:func_uvgrph_rom_0040033C
+rom:0x68 reloc:MIPS_HI16 symbol:func_uvgrph_rom_00400078
+rom:0x84 reloc:MIPS_LO16 symbol:func_uvgrph_rom_00400078
+rom:0x6C reloc:MIPS_HI16 symbol:func_uvgrph_rom_00400370
+rom:0x88 reloc:MIPS_LO16 symbol:func_uvgrph_rom_00400370
+rom:0x70 reloc:MIPS_HI16 symbol:func_uvgrph_rom_00400080
+rom:0x8C reloc:MIPS_LO16 symbol:func_uvgrph_rom_00400080
+rom:0x74 reloc:MIPS_HI16 symbol:func_uvgrph_rom_00400148
+rom:0x90 reloc:MIPS_LO16 symbol:func_uvgrph_rom_00400148
+rom:0x78 reloc:MIPS_HI16 symbol:func_uvgrph_rom_00400194
+rom:0x94 reloc:MIPS_LO16 symbol:func_uvgrph_rom_00400194
+rom:0x7C reloc:MIPS_HI16 symbol:func_uvgrph_rom_004002AC
+rom:0x98 reloc:MIPS_LO16 symbol:func_uvgrph_rom_004002AC
+rom:0x714 reloc:MIPS_32 symbol:__entrypoint_func_uvgrph_rom_400000
+rom:0x58 reloc:MIPS_26 symbol:uvUpdateFileAllocPtr

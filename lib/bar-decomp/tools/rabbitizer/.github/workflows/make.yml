@@ -1,0 +1,234 @@
+name: Build C api and run tests
+
+# Build on every branch push, tag push, and pull request change:
+on: [push, pull_request]
+
+jobs:
+  build_repo:
+    name: Build repo
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: make
+        run: make -j $(nproc) WERROR=1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@main
+        with:
+          path: build/
+
+  build_info_checks:
+    name: Test - build_info_checks
+    needs: [build_repo]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          name: artifact
+          path: build/
+
+      - name: Make tests executable
+        run: chmod --recursive +x build/
+
+      - name: Run build info checks
+        run: ./tests/run_build_info_checks.sh
+
+  logic_checks:
+    name: Test - logic_checks
+    needs: [build_repo]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          name: artifact
+          path: build/
+
+      - name: Make tests executable
+        run: chmod --recursive +x build/
+
+      - name: Run logic checks
+        run: ./tests/run_logic_checks.sh
+
+  instruction_checks_all:
+    name: Test - instruction_checks_all
+    needs: [build_repo]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          name: artifact
+          path: build/
+
+      - name: Make tests executable
+        run: chmod --recursive +x build/
+
+      - name: test
+        run: tree build/
+
+      - name: Run instruction checks
+        run: ./tests/run_instruction_checks.sh
+
+  instruction_checks_jalr:
+    name: Test - instruction_checks_jalr
+    needs: [build_repo]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          name: artifact
+          path: build/
+
+      - name: Make tests executable
+        run: chmod --recursive +x build/
+
+      - name: Run instruction check - jalr
+        run: ./build/tests/c/instruction_checks/jalr.elf
+
+  instruction_checks_plain_disassembly:
+    name: Test - instruction_checks_plain_disassembly
+    needs: [build_repo]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          name: artifact
+          path: build/
+
+      - name: Make tests executable
+        run: chmod --recursive +x build/
+
+      - name: Run instruction check - plain_disassembly
+        run: ./build/tests/c/instruction_checks/plain_disassembly.elf
+
+  instruction_checks_r3000gte_disasm:
+    name: Test - instruction_checks_r3000gte_disasm
+    needs: [build_repo]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          name: artifact
+          path: build/
+
+      - name: Make tests executable
+        run: chmod --recursive +x build/
+
+      - name: Run instruction check - r3000gte_disasm
+        run: ./build/tests/c/instruction_checks/r3000gte_disasm.elf
+
+  instruction_checks_r4000allegrex_disasm:
+    name: Test - instruction_checks_r4000allegrex_disasm
+    needs: [build_repo]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          name: artifact
+          path: build/
+
+      - name: Make tests executable
+        run: chmod --recursive +x build/
+
+      - name: Run instruction check - r4000allegrex_disasm
+        run: ./build/tests/c/instruction_checks/r4000allegrex_disasm.elf
+
+  instruction_checks_r4000allegrex_vfpu_disasm:
+    name: Test - instruction_checks_r4000allegrex_vfpu_disasm
+    needs: [build_repo]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          name: artifact
+          path: build/
+
+      - name: Make tests executable
+        run: chmod --recursive +x build/
+
+      - name: Run instruction check - r4000allegrex_vfpu_disasm
+        run: ./build/tests/c/instruction_checks/r4000allegrex_vfpu_disasm.elf
+
+  instruction_checks_r5900_trunc_cvt:
+    name: Test - instruction_checks_r5900_trunc_cvt
+    needs: [build_repo]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          name: artifact
+          path: build/
+
+      - name: Make tests executable
+        run: chmod --recursive +x build/
+
+      - name: Run instruction check - r5900_trunc_cvt
+        run: ./build/tests/c/instruction_checks/r5900_trunc_cvt.elf
+
+  instruction_checks_r5900_disasm:
+    name: Test - instruction_checks_r5900_disasm
+    needs: [build_repo]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout reposistory
+        uses: actions/checkout@main
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          name: artifact
+          path: build/
+
+      - name: Make tests executable
+        run: chmod --recursive +x build/
+
+      - name: Run instruction check - r5900_disasm
+        run: ./build/tests/c/instruction_checks/r5900_disasm.elf

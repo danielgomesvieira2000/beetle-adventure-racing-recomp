@@ -1,0 +1,9 @@
+__entrypoint_func_uvmodelld_rom_400000 = 0x400000;
+D_uvmodelld_rom_00400EE0 = 0x400EE0;
+D_uvmodelld_rom_00400EE4 = 0x400EE4;
+D_uvmodelld_rom_00400EC0 = 0x400EC0;
+D_uvmodelld_rom_00400EC4 = 0x400EC4;
+D_uvmodelld_rom_00400EC8 = 0x400EC8;
+D_uvmodelld_rom_00400EE0 = 0x400EE0;
+D_uvmodelld_rom_00400EE0 = 0x400EE0;
+D_uvmodelld_rom_00400ED0 = 0x00400ED0;

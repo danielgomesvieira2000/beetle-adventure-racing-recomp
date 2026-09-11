@@ -1,0 +1,14 @@
+__entrypoint_func_shadow_400000 = 0x400000;
+D_shadow_00400B84 = 0x400B84;
+D_shadow_00400B84 = 0x400B84;
+D_shadow_00400B00 = 0x400B00;
+D_shadow_00400B04 = 0x400B04;
+D_shadow_00400B08 = 0x400B08;
+D_shadow_00400B0C = 0x400B0C;
+D_shadow_00400B10 = 0x400B10;
+D_shadow_00400B14 = 0x400B14;
+D_shadow_00400B70 = 0x400B70;
+D_shadow_00400B18 = 0x400B18;
+D_shadow_00400B20 = 0x400B20;
+D_shadow_00400B50 = 0x400B50;
+B_shadow_00400B80 = 0x00400B80;

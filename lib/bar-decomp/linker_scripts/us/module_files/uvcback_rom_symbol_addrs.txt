@@ -1,0 +1,2 @@
+__entrypoint_func_uvcback_rom_400000 = 0x400000;
+D_uvcback_rom_00400440 = 0x00400440;

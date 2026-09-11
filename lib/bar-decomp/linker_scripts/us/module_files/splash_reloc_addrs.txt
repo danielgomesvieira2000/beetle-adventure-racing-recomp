@@ -1,0 +1,76 @@
+rom:0x60 reloc:MIPS_HI16 symbol:D_splash_00400A08
+rom:0x94 reloc:MIPS_LO16 symbol:D_splash_00400A08
+rom:0x128 reloc:MIPS_HI16 symbol:D_splash_00400968
+rom:0x134 reloc:MIPS_LO16 symbol:D_splash_00400968
+rom:0x11C reloc:MIPS_HI16 symbol:D_splash_004008F0
+rom:0x120 reloc:MIPS_LO16 symbol:D_splash_004008F0
+rom:0x290 reloc:MIPS_HI16 symbol:D_splash_00400A08
+rom:0x2D8 reloc:MIPS_LO16 symbol:D_splash_00400A08
+rom:0x2FC reloc:MIPS_HI16 symbol:D_splash_00400968
+rom:0x300 reloc:MIPS_LO16 symbol:D_splash_00400968
+rom:0x3D0 reloc:MIPS_HI16 symbol:D_splash_004008F4
+rom:0x3D4 reloc:MIPS_LO16 symbol:D_splash_004008F4
+rom:0x44C reloc:MIPS_HI16 symbol:D_splash_004008F8
+rom:0x454 reloc:MIPS_LO16 symbol:D_splash_004008F8
+rom:0x4E0 reloc:MIPS_HI16 symbol:D_splash_00400900
+rom:0x4E4 reloc:MIPS_LO16 symbol:D_splash_00400900
+rom:0x5A4 reloc:MIPS_HI16 symbol:D_splash_00400908
+rom:0x5A8 reloc:MIPS_LO16 symbol:D_splash_00400908
+rom:0x5AC reloc:MIPS_HI16 symbol:D_splash_0040090C
+rom:0x5B0 reloc:MIPS_LO16 symbol:D_splash_0040090C
+rom:0x5EC reloc:MIPS_HI16 symbol:D_splash_00400A08 addend:0x2A8
+rom:0x5F0 reloc:MIPS_LO16 symbol:D_splash_00400A08 addend:0x2A8
+rom:0x6A0 reloc:MIPS_HI16 symbol:func_splash_004005F8
+rom:0x6B0 reloc:MIPS_LO16 symbol:func_splash_004005F8
+rom:0x6A4 reloc:MIPS_HI16 symbol:func_splash_00400000
+rom:0x6B4 reloc:MIPS_LO16 symbol:func_splash_00400000
+rom:0x6A8 reloc:MIPS_HI16 symbol:func_splash_0040020C
+rom:0x6B8 reloc:MIPS_LO16 symbol:func_splash_0040020C
+rom:0x6AC reloc:MIPS_HI16 symbol:func_splash_00400828
+rom:0x6C0 reloc:MIPS_LO16 symbol:func_splash_00400828
+rom:0x710 reloc:MIPS_HI16 symbol:D_splash_00400A08 addend:0x84
+rom:0x71C reloc:MIPS_LO16 symbol:D_splash_00400A08 addend:0x84
+rom:0x714 reloc:MIPS_HI16 symbol:D_splash_00400A08
+rom:0x718 reloc:MIPS_LO16 symbol:D_splash_00400A08
+rom:0x768 reloc:MIPS_HI16 symbol:D_splash_00400968
+rom:0x76C reloc:MIPS_LO16 symbol:D_splash_00400968
+rom:0x738 reloc:MIPS_HI16 symbol:D_splash_00400910
+rom:0x73C reloc:MIPS_LO16 symbol:D_splash_00400910
+rom:0x748 reloc:MIPS_HI16 symbol:D_splash_00400914
+rom:0x74C reloc:MIPS_LO16 symbol:D_splash_00400914
+rom:0x750 reloc:MIPS_HI16 symbol:D_splash_00400918
+rom:0x754 reloc:MIPS_LO16 symbol:D_splash_00400918
+rom:0x758 reloc:MIPS_HI16 symbol:D_splash_0040091C
+rom:0x75C reloc:MIPS_LO16 symbol:D_splash_0040091C
+rom:0x760 reloc:MIPS_HI16 symbol:D_splash_00400920
+rom:0x764 reloc:MIPS_LO16 symbol:D_splash_00400920
+rom:0x770 reloc:MIPS_HI16 symbol:D_splash_00400924
+rom:0x780 reloc:MIPS_LO16 symbol:D_splash_00400924
+rom:0x784 reloc:MIPS_HI16 symbol:D_splash_00400928
+rom:0x7A4 reloc:MIPS_LO16 symbol:D_splash_00400928
+rom:0x7A8 reloc:MIPS_HI16 symbol:D_splash_0040092C
+rom:0x7B4 reloc:MIPS_LO16 symbol:D_splash_0040092C
+rom:0x7B8 reloc:MIPS_HI16 symbol:D_splash_00400930
+rom:0x7C0 reloc:MIPS_LO16 symbol:D_splash_00400930
+rom:0x7C4 reloc:MIPS_HI16 symbol:D_splash_00400934
+rom:0x7CC reloc:MIPS_LO16 symbol:D_splash_00400934
+rom:0x7D0 reloc:MIPS_HI16 symbol:D_splash_00400938
+rom:0x7DC reloc:MIPS_LO16 symbol:D_splash_00400938
+rom:0x7F4 reloc:MIPS_HI16 symbol:D_splash_0040093C
+rom:0x828 reloc:MIPS_LO16 symbol:D_splash_0040093C
+rom:0x82C reloc:MIPS_HI16 symbol:D_splash_00400940
+rom:0x840 reloc:MIPS_LO16 symbol:D_splash_00400940
+rom:0x844 reloc:MIPS_HI16 symbol:D_splash_00400944
+rom:0x868 reloc:MIPS_LO16 symbol:D_splash_00400944
+rom:0x894 reloc:MIPS_HI16 symbol:D_splash_00400A08
+rom:0x8AC reloc:MIPS_LO16 symbol:D_splash_00400A08
+rom:0x898 reloc:MIPS_HI16 symbol:D_splash_00400A08 addend:0x2A8
+rom:0x8A8 reloc:MIPS_LO16 symbol:D_splash_00400A08 addend:0x2A8
+rom:0x9A4 reloc:MIPS_32 symbol:__entrypoint_func_splash_40063c
+rom:0x654 reloc:MIPS_26 symbol:uvUnloadModule
+rom:0x664 reloc:MIPS_26 symbol:uvUnloadFile
+rom:0x674 reloc:MIPS_26 symbol:uvUnloadFile
+rom:0x694 reloc:MIPS_26 symbol:uvUpdateFileAllocPtr
+rom:0x6D4 reloc:MIPS_26 symbol:uvLoadModule
+rom:0x6EC reloc:MIPS_26 symbol:uvLoadFile
+rom:0x6FC reloc:MIPS_26 symbol:uvLoadFile

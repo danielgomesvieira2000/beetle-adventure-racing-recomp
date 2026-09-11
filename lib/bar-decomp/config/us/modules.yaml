@@ -1,0 +1,209 @@
+Modules:
+  # Module
+  - name: ai
+    #migrate_functions_to_rodata: true
+    # Module disasm will not split any of the sections specified here
+    #done_sections:
+    # - text
+  - name: aiedit
+  - name: airec
+  - name: battle
+  - name: bubble
+  - name: cam
+  - name: caranim
+  - name: caraudio
+  - name: cbars
+  - name: dledit
+  - name: demo
+  - name: env
+  - name: envsnd
+  - name: expl
+  - name: filerom
+  - name: fileux
+  - name: filmroll
+  - name: flag
+  - name: game
+  - name: gamegui
+  - name: glare
+  - name: intro
+    done_sections:
+      - text
+  - name: letter
+  - name: level1
+  - name: light
+  - name: logo
+    done_sections:
+      - text
+      - rodata
+  - name: med
+  - name: menuslct
+  - name: misc
+  - name: motion
+  - name: mult1
+  - name: mult2
+  - name: mult3
+  - name: mult4
+  - name: mult5
+  - name: mult6
+  - name: mult7
+  - name: mult8
+  - name: mult9
+  - name: pause
+  - name: piece
+  - name: plyr
+  - name: powerup
+  - name: profgame
+  - name: race
+  - name: rain
+  - name: replay
+  - name: results
+  - name: ripple
+    done_sections:
+      - text
+      - rodata
+  - name: rumble
+  - name: scene
+  - name: scrn
+  - name: selection
+  - name: shadow
+  - name: skid
+  - name: smack
+  - name: snd
+  - name: sparks
+  - name: splash
+  - name: spray
+  - name: tdata
+  - name: ted
+  - name: track1
+  - name: track2
+  - name: track3
+  - name: track4
+  - name: track5
+  - name: track6
+  - name: track7
+  - name: triganim
+  - name: txtview
+  - name: ufo
+  - name: ufogame
+  - name: voltest
+  - name: weapon
+  - name: uvaudiomgr_rom
+    done_sections:
+      - text
+  - name: uvbill_rom
+  - name: uvblit_rom
+    done_sections:
+      - text
+  - name: uvcback_rom
+    done_sections:
+      - text
+  - name: uvcmidi_rom
+    done_sections:
+      - text
+  - name: uvchannel_rom
+  - name: uvcolor_rom
+    done_sections:
+      - text
+      - rodata
+  - name: uvcont_rom
+  - name: uvcontourld_rom
+  - name: uvdgeom_rom
+    done_sections:
+      - text
+  - name: uvdbg_rom
+    done_sections:
+      - text
+      - rodata
+      - data
+  - name: uvdobj_rom
+  - name: uvdsetld_rom
+    done_sections:
+      - text
+  - name: uvdyn_rom
+  - name: uvear_rom
+    done_sections:
+      - text
+      - rodata
+  - name: uvemitter_rom
+    done_sections:
+      - text
+  - name: uvenv_rom
+  - name: uvenvld_rom
+  - name: uvfmtx_rom
+  - name: uvfvec_rom
+    done_sections:
+      - text
+      - rodata
+      - bss
+  - name: uvfont_rom
+  - name: uvfontld_rom
+    done_sections:
+      - text
+  - name: uvfx_rom
+  - name: uvgeom_rom
+  - name: uvgfxmgr_rom
+  - name: uvgfxstate_rom
+  - name: uvgrph_rom
+  - name: uvgui_rom
+  - name: uvimtx_rom
+    done_sections:
+      - text
+  - name: uvintersect_rom
+  - name: uvisect_rom
+  - name: uvjanim_rom
+    done_sections:
+      - text
+  - name: uvjanimld_rom
+    done_sections:
+      - text
+  - name: uvled_rom
+  - name: uvlight_rom
+  - name: uvmath_rom
+  - name: uvmodel_rom
+  - name: uvmodelld_rom
+  - name: uvpfx_rom
+  - name: uvpfxld_rom
+  - name: uvquat_rom
+    done_sections:
+      - text
+      - rodata
+      - data
+  - name: uvquery_rom
+  - name: uvsort_rom
+    done_sections:
+      - text
+      - rodata
+      - bss
+  - name: uvsprt_rom
+    done_sections:
+      - text
+      - rodata
+      - data
+  - name: uvstring_rom
+    done_sections:
+      - text
+  - name: uvtexanim_rom
+  - name: uvtseq_rom
+    done_sections:
+      - text
+      - rodata
+  - name: uvtseqld_rom
+    done_sections:
+      - text
+  - name: uvterra_rom
+  - name: uvterrald_rom
+  - name: uvtexture_rom
+  - name: uvtexturexref_rom
+  - name: uvtextureld_rom
+  - name: uvtrackld_rom
+  - name: uvufileld_rom
+    done_sections:
+      - text
+  - name: uvvattr_rom
+  - name: uvvolumeld_rom
+    done_sections:
+      - text
+  - name: victory
+  - name: weapon
+    done_sections:
+      - text

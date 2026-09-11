@@ -1,0 +1,13 @@
+*.o
+*.s
+*.c
+*.py[cod]
+.mypy_cache/
+.cache/
+__pycache__/
+!test/*.c
+/nonmatchings
+.vscode/
+pah.conf
+/.venv/
+/venv/

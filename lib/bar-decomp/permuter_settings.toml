@@ -1,0 +1,3 @@
+# decomp-permuter project settings for BAR (IDO 5.3 module build (Makefile:412)).
+# Silences the "compiler_type missing" warning and improves randomization.
+compiler_type = "ido"

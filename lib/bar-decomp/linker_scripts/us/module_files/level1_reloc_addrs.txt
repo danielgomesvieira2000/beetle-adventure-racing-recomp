@@ -1,0 +1,6 @@
+rom:0x64 reloc:MIPS_HI16 symbol:func_level1_0040003C
+rom:0x6C reloc:MIPS_LO16 symbol:func_level1_0040003C
+rom:0x68 reloc:MIPS_HI16 symbol:func_level1_00400044
+rom:0x70 reloc:MIPS_LO16 symbol:func_level1_00400044
+rom:0xA4 reloc:MIPS_32 symbol:__entrypoint_func_level1_400000
+rom:0x58 reloc:MIPS_26 symbol:uvUpdateFileAllocPtr

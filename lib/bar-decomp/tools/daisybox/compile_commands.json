@@ -1,0 +1,86 @@
+[
+  {
+    "arguments": [
+      "/usr/lib64/ccache/gcc",
+      "-I.",
+      "-I",
+      "include",
+      "-ggdb3",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-std=c11",
+      "-Wno-multichar",
+      "-c",
+      "-o",
+      "build/src/bar_module_files.o",
+      "src/bar_module_files.c"
+    ],
+    "directory": "/home/Usr/Decomp/n64/bar/tools/daisybox",
+    "file": "/home/Usr/Decomp/n64/bar/tools/daisybox/src/bar_module_files.c",
+    "output": "/home/Usr/Decomp/n64/bar/tools/daisybox/build/src/bar_module_files.o"
+  },
+  {
+    "arguments": [
+      "/usr/lib64/ccache/gcc",
+      "-I.",
+      "-I",
+      "include",
+      "-ggdb3",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-std=c11",
+      "-Wno-multichar",
+      "-c",
+      "-o",
+      "build/src/load_map_symbols.o",
+      "src/load_map_symbols.c"
+    ],
+    "directory": "/home/Usr/Decomp/n64/bar/tools/daisybox",
+    "file": "/home/Usr/Decomp/n64/bar/tools/daisybox/src/load_map_symbols.c",
+    "output": "/home/Usr/Decomp/n64/bar/tools/daisybox/build/src/load_map_symbols.o"
+  },
+  {
+    "arguments": [
+      "/usr/lib64/ccache/gcc",
+      "-I.",
+      "-I",
+      "include",
+      "-ggdb3",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-std=c11",
+      "-Wno-multichar",
+      "-c",
+      "-o",
+      "build/src/manager.o",
+      "src/manager.c"
+    ],
+    "directory": "/home/Usr/Decomp/n64/bar/tools/daisybox",
+    "file": "/home/Usr/Decomp/n64/bar/tools/daisybox/src/manager.c",
+    "output": "/home/Usr/Decomp/n64/bar/tools/daisybox/build/src/manager.o"
+  },
+  {
+    "arguments": [
+      "/usr/lib64/ccache/gcc",
+      "-I.",
+      "-I",
+      "include",
+      "-ggdb3",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-std=c11",
+      "-Wno-multichar",
+      "-c",
+      "-o",
+      "build/src/sym_tab.o",
+      "src/sym_tab.c"
+    ],
+    "directory": "/home/Usr/Decomp/n64/bar/tools/daisybox",
+    "file": "/home/Usr/Decomp/n64/bar/tools/daisybox/src/sym_tab.c",
+    "output": "/home/Usr/Decomp/n64/bar/tools/daisybox/build/src/sym_tab.o"
+  }
+]

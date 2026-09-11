@@ -22,7 +22,10 @@ Not committed, and never to be committed. Supply your own legally dumped USA car
 
 ## Submodules
 
-Recorded in the superproject index. Verify with `git submodule status` — any `+` prefix
+Recorded here as history rather than as pointers: since the libraries are committed into this
+repository as ordinary files, there is no submodule index to check and no revision to drift. The
+revisions below are what each `lib/` tree was taken from, kept so that an upstream change can still be
+diffed against a known starting point. (Verify with `git submodule status` — any `+` prefix
 means the working tree has drifted from the pin.
 
 | Path | Commit | Describes as |
@@ -99,7 +102,7 @@ WSL_DISTRO=Ubuntu DECOMP_DIR=/home/daniel/projects/bar-decomp scripts/fetch-elf.
 
 Each step depends on the one before it.
 
-1. `git submodule update --init --recursive`
+1. `git clone` (there are no submodules; every library is committed under `lib/`)
 2. Build the recompiler → `N64Recomp.exe`, `RSPRecomp.exe` at the repo root
 3. (WSL) `cd ~/projects/bar-decomp && source .venv/bin/activate && make extract && make -j6`
    — must print `build/beetleadventurerac.us.z64: OK`
@@ -129,15 +132,12 @@ cmake -S . -B build-frontend -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_CO
       -DCMAKE_BUILD_TYPE=Release -DBEETLE_ENABLE_UI=OFF -DBEETLE_ENABLE_FRONTEND=ON
 ```
 
-**One local patch is required** before this configures into a working build:
-
-```bash
-python scripts/patch-recompinput.py      # idempotent; scripts/setup.* run it for you
-```
-
-It adds `recompinput::players::auto_assign_controllers`, without which the build does not link. See
-[05 — player assignment](technical/05-runtime-host.md#input-goes-through-recompinput) for why the
-port needs it. **Re-run it after every `git submodule update`**, which reverts it silently.
+**`recompinput::players::auto_assign_controllers` is part of the vendored source.** It used to be
+applied by `scripts/patch-recompinput.py` after every `git submodule update`, which reverted it
+silently; now that RecompFrontend is committed here rather than pointed at, the change simply stays.
+The script is kept as the record of what was changed and why — it is idempotent and has nothing left
+to do. See [05 — player assignment](technical/05-runtime-host.md#input-goes-through-recompinput) for
+why the port needs it.
 
 Four integration constraints, each of which broke the build once:
 
