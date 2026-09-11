@@ -149,6 +149,24 @@ which is how this was settled without listening to noise.
 
 `BAR_NO_AUDIO` disables both the device and the recompiled ucode.
 
+**The Sound tab is applied by the port, not by the library.** recompui defines Main Volume, stores
+it and reads it back, and nothing upstream ever applies it — the port is expected to, and this one
+did not, so the slider was inert in every build up to this one. It is applied in `queue_samples`,
+after the channel-swap transform and after the `BAR_AUDIO_DBG` peak/clip measurement, so those
+diagnostics still measure what the *game* produced rather than what the player chose to hear.
+`Mute When Not In Focus` is applied in the same place, from a flag `update_gfx` refreshes once a
+frame (`SDL_WINDOW_INPUT_FOCUS`) — the game thread has no business asking SDL about window state.
+
+Silence is queued as **zeroes rather than as nothing**. `get_frames_remaining` reports the depth of
+the SDL queue, and both the game and this port's frame limiter pace themselves from that answer, so
+a muted game that queued nothing would be told it was starving and would run away from its own
+clock.
+
+There is no separate Music Volume, and the reason is a limit rather than an omission: Main Volume is
+applied to the finished buffer, which is the only place this port can reach, and music and effects
+are already mixed together by the time they arrive. Separating them means reaching into the game's
+own sequence players. `wave-race-64-recomp` has the option because that work was done there.
+
 See also [04 — the RSP audio microcode](04-static-recompilation.md#the-rsp-audio-microcode) for the
 2.0I-vs-2.0J jump-target problem, and
 [04 — hardware-register stubs](04-static-recompilation.md#hardware-register-stubs) for why
@@ -190,6 +208,68 @@ Three defects found here, each of which produced a symptom nowhere near its caus
   only touches the buffer when `a1` is a sane KSEG0 8 MiB address, and otherwise just posts the SI
   event so the game does not deadlock.
 * The SI queue depth issue described above.
+
+## Input goes through recompinput
+
+The SI/PIF plumbing above is *how* a button reaches the game. **What** each button is comes from
+somewhere else, and in the frontend build that somewhere is `recompinput`, not this port.
+
+This was not always so, and the intermediate state is worth recording because it looked like a
+working build. The port grew its own input layer — `src/main/bar_input.cpp` plus
+`src/game/input_config.cpp` — which opened SDL pads itself, kept per-port bindings, and was edited
+by a Controls dialog in the old `src/ui`. When RecompFrontend replaced `src/ui`, that dialog went
+away but the layer under it stayed wired up, and the result was a build in which:
+
+* **no gamepad worked at all**, because `bar::input`'s device list was built from
+  `SDL_CONTROLLERDEVICEADDED` / `REMOVED`, which now go to recompinput's pump and nowhere else;
+* **every rebinding in the Controls tab did nothing**, because the tab writes `controls.json`, which
+  only `recompinput::profiles` reads, while the game was resolved from `bar::input_config`'s own
+  tables;
+* **rumble did nothing**, for the same reason as the pads — `bar::input` had no open handle to
+  rumble — and the General tab's Rumble Strength scaled nothing.
+
+None of that is visible in a screenshot, and the keyboard kept working throughout, because SDL's
+keyboard state is global and `bar::input` read it directly.
+
+The bridge is two functions in `src/frontend/bar_frontend.cpp`, and nothing else in the port
+includes a recompinput header:
+
+| Function | What it answers |
+|---|---|
+| `bar::frontend::port_assigned(port)` | Whether this N64 port has anything driving it. Port 0 always does; 1–3 once their pad is plugged in. |
+| `bar::frontend::poll_port(port, &sx, &sy)` | The port's live N64 button mask and stick, with the player's own bindings applied. |
+
+`profiles::get_n64_input` returns the stick normalised to [-1, 1] and already deadzoned; the bridge
+scales it to the N64's own ±80, which is the range the joybus bytes carry and what the rest of the
+port has always used. The button mask needs no translation at all: recompinput's
+`DEFINE_N64_BUTTON_INPUTS` values (`A = 0x8000`, `B = 0x4000`, `Z = 0x2000`, `START = 0x1000`, … )
+are the hardware's, and identical to the `nbits` table in `src/game/input_config.cpp`.
+
+`bar::input` is **not** retired. It still owns the Controller Pak and the per-port pak type, which
+recompinput has no concept of, and it is still the whole input path in the headless build — where
+there is no recompinput to ask. `#ifdef BEETLE_ENABLE_FRONTEND` picks between them in three places:
+`bar_poll_keyboard`, `bar_port_connected` and `input_set_rumble`.
+
+### Player assignment, and the one local patch to a submodule
+
+RecompFrontend assigns pads to players exactly one way: the Controls tab's "Assign players" button
+opens a modal and each player presses a button on the pad they want. Until someone has been through
+it, `players::get_player_is_assigned(n)` is false for every *n* and `get_n64_input` reads a profile
+index of −1 — so a pad that is plugged in and working drives nothing, with nothing on screen to say
+that a modal in a settings tab is what stands between it and the game.
+
+`scripts/patch-recompinput.py` adds `players::auto_assign_controllers`, which fills the player list
+in connection order and assigns each player the profile belonging to its pad — exactly what
+committing a manual assignment does, from a list the caller supplies rather than from button
+presses. Player one also keeps the single-player keyboard profile, which `get_n64_input` merges with
+the controller profile, so the keys and the pad both play without either having to be chosen. The
+patch refuses to run while a manual assignment is open, so the modal still wins for anyone who wants
+to choose.
+
+The patch is **scripted and idempotent because it touches a submodule**: `git submodule update`
+reverts it, and the build then fails to link with nothing pointing at what was lost.
+`scripts/setup.sh` and `scripts/setup.ps1` run it. This mirrors `wave-race-64-recomp`, which needed
+the same function for the same reason.
 
 ## Controller Pak and Rumble Pak
 
@@ -263,6 +343,66 @@ those two settings change only across a restart. They still persist to `graphics
 effect on the next launch. Every other setting — refresh rate, aspect ratio, HUD ratio, window mode,
 HDR — applies live.
 
+## The launcher, and what a port actually supplies
+
+Almost none of the launcher is this port's. recompui owns the menu, the native file dialog, the ROM
+validation messages, the settings tabs, the controller remapping and the profiles that persist
+between sessions. What a port supplies is four things: which game this is, what the entries say, a
+stylesheet, and the fonts.
+
+**The stylesheet is deliberately almost empty** (`assets/ui/recomp.rcss`, 31 lines). recompui carries
+its theme in code as a palette of named colours, and its elements style themselves from it — which
+is why every one of these ports looks alike. A sheet that sets its own colours does not restyle those
+elements, it competes with them. To restyle, call `recompui::theme::set_theme_color` from C++.
+
+**Four typefaces are staged, and every one is asked for by name.** They come from RmlUi's sample
+assets — RmlUi is already vendored inside recompui, so committing a second copy of the same binaries
+would only create two things to keep in step:
+
+| File | Why |
+|---|---|
+| `LatoLatin-Regular.ttf` | The primary font, passed to `register_primary_font`. Without a primary font recompui *throws* at menu-creation time. |
+| `LatoLatin-Bold.ttf` | The 700-weight face. recompui's default typography presets ask for weight 700 for every heading and label. |
+| `LatoLatin-Italic.ttf` | The italic face. |
+| `NotoEmoji-Regular.ttf` | recompui loads this **unconditionally** as a fallback face (`ui_state.cpp`'s `font_faces[]`), alongside `promptfont/promptfont.ttf`. It is not optional: without the file, `Rml::LoadFontFace` fails on every startup. |
+
+Family names are matched from **inside** the file: `LatoLatin-Regular.ttf` declares itself
+`LatoLatin`, not `Lato`. Registering the wrong one fails silently in the worst way — every element
+lays out and draws in the right place, with no text in any of them.
+
+**The launcher background is this project's own icon.** `scripts/make-launcher-logo.py` wraps
+`icons/Icon.png` into `assets/ui/icons/Logo.svg` as a base64 `<image>`; lunasvg 3.x resolves those
+through `plutovg_surface_load_from_image_base64`, so the launcher resolves one asset path rather than
+two. The viewBox is 680×120 for a layout reason that is worth writing down, because the SVG looks
+arbitrary otherwise: `set_launcher_background_svg` lays the artwork out at 100% of the window width
+with height auto, centred vertically, so the **viewBox's aspect ratio is what decides how tall the
+artwork is on screen**. A wide, short box puts the icon in the band between the launcher's title
+(recompui places it at 25% of the window height) and its menu (the bottom quarter). A square viewBox
+would have drawn the icon across both.
+
+Unlike `wave-race-64-recomp`, the default title is **kept**: that port's artwork spells its game's
+name out, and this one is only an icon, so recompui's title label is what still names the game.
+
+**The keyboard defaults are declared here, not left to the library.** RecompFrontend's own defaults
+are a different scheme again (WASD and space). `set_default_mapping_for_keyboard` sets
+`wave-race-64-recomp`'s bindings, so that the two ports play the same way from the same keyboard:
+arrows for the stick, X for A, C for B, Z for the Z trigger, Enter for Start, A/S for L/R, IJKL for
+the C buttons and TFGH for the D-pad.
+
+These are **not** the keys this port's older documentation described — that scheme had B on Z, the Z
+trigger on Left Shift and L/R on Q/W, and it came from the bespoke `bar::input` tables that nothing
+reads any more in the frontend build. Defaults apply to a profile the first time it is created; an
+existing `controls.json` keeps whatever it holds until it is reset in the Controls tab.
+
+**First run defaults to fullscreen at the display's own size.** Resolution `Auto` and aspect ratio
+`Expand` are already the library's defaults; only the window mode is not. It is set after
+`finalize()` — the option map does not exist until the JSON has loaded — and only when no
+`graphics.json` exists, which is what makes it a first-run default rather than an override. Both
+copies are set, because recompui owns the value the menu shows and ultramodern owns the one the
+renderer reads. It is suppressed when `BAR_AUTOPLAY`, `BAR_SHOTS` or `BAR_SHOT_BURST` is set: a
+scripted run is watched in a window, and a fresh config directory is exactly the state those runs
+start from, so without the check every scripted run on a clean profile would take over the display.
+
 ## SDL event ownership
 
 **recompinput must be the sole `SDL_PollEvent` caller.** A second loop in the host races it and each
@@ -273,9 +413,16 @@ until a game is running, and this port sits at the launcher with no game started
 `input_poll` left nothing draining SDL's queue at the launcher, so the window stopped answering
 Windows and went "Not Responding".
 
-A consequence still open: with recompinput owning the queue, the host never receives
-`SDL_CONTROLLERDEVICEADDED`, so pads plugged in after launch are not seen. Pads present at startup
-work. The reference port solves this with a periodic re-scan.
+**The host therefore never receives `SDL_CONTROLLERDEVICEADDED`.** `SDL_PollEvent` removes what it
+returns, so a hotplug loop of the host's own sees nothing — which is why `bar::input`, whose whole
+device list was built from those two events, knows about no pad at all in the frontend build. This
+was open for a while and read as "pads plugged in after launch are not seen"; it was worse than
+that, because no pad was seen at any time.
+
+It is closed by a **re-scan**, in `refresh_players()` (`src/frontend/bar_frontend.cpp`), once per
+frame: `SDL_NumJoysticks` / `SDL_IsGameController` / `SDL_GameControllerOpen`, which returns the
+existing handle for an already-open device rather than opening it twice. That makes the rescan cheap
+and correct rather than a workaround.
 
 ## Small things that cost time
 

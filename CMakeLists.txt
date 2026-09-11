@@ -185,6 +185,7 @@ add_executable(beetle-adventure-racing-recomp
     ${CMAKE_SOURCE_DIR}/src/main/bar_preempt.cpp         # cooperative audio-thread preemption (no-underrun)
     ${CMAKE_SOURCE_DIR}/src/main/bar_crash.cpp           # symbolized crash backtrace (debug aid)
     ${CMAKE_SOURCE_DIR}/src/main/bar_input.cpp           # live 4-port runtime input path (device/keymap/rumble/pak)
+    ${CMAKE_SOURCE_DIR}/src/main/bar_inspector.cpp       # HUD inspector: the F1 debug menu's port half + hud.json
     ${CMAKE_SOURCE_DIR}/src/game/config.cpp              # host-owned settings persistence + high-FPS enable
     ${CMAKE_SOURCE_DIR}/src/game/input_config.cpp        # 4-port controller settings model + input.json persistence
     ${CMAKE_SOURCE_DIR}/rsp/aspMain.cpp                  # RSPRecomp output: BAR audio ucode (M_AUDTASK)
@@ -314,11 +315,33 @@ if (BEETLE_ENABLE_FRONTEND)
     # the project stylesheet. Without them recompui throws at menu-creation time.
     # Copy the whole tree so icons/ (and anything added later) comes along: recompui resolves both
     # "recomp.rcss" and "icons/X.svg" through the same <exe dir>/assets root.
+    #
+    # The typefaces come from RmlUi's own sample assets rather than being committed a second time:
+    # RmlUi is already a submodule of recompui, and it vendors the whole Lato family plus NotoEmoji
+    # under the SIL Open Font License. Four files, and every one of them is asked for by name:
+    #
+    #   LatoLatin-Regular.ttf   the primary font, registered in src/frontend/bar_frontend.cpp.
+    #   LatoLatin-Bold.ttf      the 700-weight face the theme's headings and labels ask for.
+    #   LatoLatin-Italic.ttf    the italic face, for the same reason.
+    #   NotoEmoji-Regular.ttf   recompui loads this UNCONDITIONALLY as a fallback face
+    #                           (ui_state.cpp's font_faces[]). It is not optional: without the file
+    #                           beside the executable, Rml::LoadFontFace fails on every startup and
+    #                           any glyph outside Lato's coverage renders as a blank box.
+    #
+    # This mirrors wave-race-64-recomp, this project's reference port, so the two launchers draw
+    # their text from the same set of faces.
+    set(BEETLE_RMLUI_ASSETS "${CMAKE_SOURCE_DIR}/lib/RecompFrontend/recompui/lib/RmlUi/Samples/assets")
     add_custom_command(TARGET beetle-adventure-racing-recomp POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "${CMAKE_SOURCE_DIR}/assets/ui"
                 "$<TARGET_FILE_DIR:beetle-adventure-racing-recomp>/assets"
-        COMMENT "Staging RecompFrontend assets (stylesheet, primary font, icons)")
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${BEETLE_RMLUI_ASSETS}/LatoLatin-Regular.ttf"
+                "${BEETLE_RMLUI_ASSETS}/LatoLatin-Bold.ttf"
+                "${BEETLE_RMLUI_ASSETS}/LatoLatin-Italic.ttf"
+                "${BEETLE_RMLUI_ASSETS}/NotoEmoji-Regular.ttf"
+                "$<TARGET_FILE_DIR:beetle-adventure-racing-recomp>/assets"
+        COMMENT "Staging RecompFrontend assets (stylesheet, fonts, icons)")
 endif()
 # ---------------------------------------------------------------------------
 # Tier-2 settings/launcher menu (src/ui) — RmlUi rendered through RT64.

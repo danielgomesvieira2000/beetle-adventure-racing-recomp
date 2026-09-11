@@ -38,6 +38,11 @@ extern "C" void bar_rt64_start_burst(const char *dir, int count);
 // wrong for the menus, which are authored as whole 4:3 compositions. Only this side can read the
 // game's state out of RDRAM, so it pushes the answer in.
 extern "C" void bar_rt64_set_hud_anchor(int racing);
+
+// The same bridge, for the game state itself. The HUD inspector shows it in its header so that a
+// list of elements can be tied to the screen it came from -- 14 is the front-end menus, 2 the boot
+// attract, 5 a race.
+extern "C" void bar_rt64_set_game_state(unsigned int state);
 extern "C" void bar_dbg_slide(const char* tag) {
     // Deterministic burst-capture trigger for the film-roll transition: when the animation loop
     // (func_filmroll_00400170) is entered, tell RT64 to capture the next N presents to dir/fNNNN.png.
@@ -322,6 +327,7 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
         }
 
         bar_rt64_set_hud_anchor(((st == 5) && sawSetup && ((phase == 0) || (phase == 3))) ? 1 : 0);
+        bar_rt64_set_game_state((unsigned int)st);
 
         // Attract/intro frame cap -- using the game's OWN frame limiter.
         //

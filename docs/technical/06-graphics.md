@@ -212,11 +212,48 @@ so there is no transition to see.
 Only the host side can read that out of RDRAM, so `src/main/os_unimpl_stubs.cpp` pushes the answer
 into RT64 with `bar_rt64_set_hud_anchor(int racing)` from the SI poll.
 
-Switches: `BAR_HUD_ANCHOR=0` disables it entirely, `BAR_HUD_ORTHO=0` keeps the rectangles anchored
-but leaves the needle's layer centred (this is how the two halves are told apart on screen), and
-`BAR_HUD_TRACE=1` prints state, the racing flag and every rectangle with the class it was given. The
-player-facing control is **HUD Ratio**: *Full* anchors to the frame's edges, *Clamp16x9* anchors only
-as far as 16:9 (so an ultrawide keeps 16:9 positions), *Original* restores centred placement.
+Switches: `BAR_HUD_ANCHOR=0` disables the positional heuristic (but **not** tags — see below),
+`BAR_HUD_ORTHO=0` keeps the rectangles anchored but leaves the needle's layer centred (this is how
+the two halves are told apart on screen), and `BAR_HUD_TRACE=1` prints state, the racing flag and
+every rectangle with the class it was given. The player-facing control is **HUD Ratio**: *Full*
+anchors to the frame's edges, *Clamp16x9* anchors only as far as 16:9 (so an ultrawide keeps 16:9
+positions), *Original* restores centred placement.
+
+### Tags, and the five classes
+
+The positional heuristic above is only the second of two things that decide an element's class. The
+first is a **tag**, looked up by the element's identity — `tex:0x…`, the last `G_SETTIMG` address, or
+`dl:0x…`, the display list the draw came from. Tags come from the HUD inspector's live dropdown and
+from `hud.json` in the settings folder, and unlike the heuristic they apply **everywhere**, menus
+included. That split is deliberate: the heuristic is a guess that is only safe during a race, while a
+tag is somebody's explicit decision about one element.
+
+`classifyRect` therefore runs for every 2D rectangle now, not only during a race — it is also what
+publishes the frame's elements to the inspector. It returns `Class::Center` after a single branch
+when there is no inspector, no tag table and no race in progress.
+
+The class an element can be given, and what `RDP::drawRect` emits for it:
+
+| Class | Emitted |
+|---|---|
+| `center` | Nothing; RT64's default centring stands. |
+| `left` / `right` | `G_EX_ORIGIN_LEFT` / `_RIGHT` on **both** edges (a translation, not a stretch), plus the widened scissor that has to travel with it. |
+| `stretch` | `rectAspect = G_EX_ASPECT_STRETCH`, origins left `G_EX_ORIGIN_NONE`. Means "do not squeeze this to 4:3" — a 320-wide rectangle reaches the frame's full width and a narrower one is widened about its centre by the same factor. It does **not** pin an element's edges to the frame's; that is what the origins do. |
+| `spill` | Placement untouched; only the scissor is widened, for that one draw. The only class about clipping rather than placement — for an element that is the right size in the right place and is merely cut off where the 4:3 frame used to end. BAR scissors a race to `x 8..311`, so an element drawn from `x 0` has eight units hidden even on hardware. |
+
+`stretch` and `spill` are new with the inspector and have no built-in users yet: nothing in
+`classifyByPosition` returns them, so they reach the renderer only through a tag. Treat them as
+untested against real BAR elements until something has been tagged with each and looked at.
+
+### Seeing what it decided
+
+`BAR_HUD_TRACE=1` is a log read afterwards and matched to a screenshot by eye, which is a bad
+instrument for something that lasts a fraction of a second and whose identity a picture cannot show.
+**`docs/HUD-INSPECTOR.md`** documents the replacement: an F1 window listing every element of the
+current frame with its identity, extent and class, hover-to-outline, and a dropdown that changes the
+class from the next frame. The port half is `src/main/bar_inspector.cpp`; the hook it fills is four
+null-by-default function pointers in `lib/rt64/src/hle/rt64_bar_hud.h`, so the fork still builds and
+behaves identically standalone.
 
 ## The two coverage tests
 

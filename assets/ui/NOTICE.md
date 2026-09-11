@@ -25,9 +25,26 @@ Do not reintroduce it.
 
 From `danielgomesvieira2000/wave-race-64-recomp`, this project's own reference port.
 
-## LatoLatin-Regular.ttf
+`icons/Logo.svg` is the exception: it is generated from this project's own `icons/Icon.png` by
+`scripts/make-launcher-logo.py`, and is what the launcher draws as its background. Re-run that
+script after changing the icon rather than editing the SVG, which is a base64-embedded PNG.
 
-Lato, by Łukasz Dziedzic — **SIL Open Font License 1.1**.
+## The typefaces are NOT in this directory
+
+Lato and NotoEmoji are staged from RmlUi's sample assets at build time — see the asset-staging
+block in `CMakeLists.txt`. RmlUi is already vendored inside `lib/RecompFrontend/recompui/lib/RmlUi`
+and ships the whole family, so committing a second copy of binaries the tree already has would only
+create two things to keep in step. Four files are staged:
+
+| File | Why it is needed |
+|---|---|
+| `LatoLatin-Regular.ttf` | The primary font, registered by `src/frontend/bar_frontend.cpp`. |
+| `LatoLatin-Bold.ttf` | The 700-weight face recompui's headings and labels ask for. |
+| `LatoLatin-Italic.ttf` | The italic face, for the same reason. |
+| `NotoEmoji-Regular.ttf` | recompui loads this **unconditionally** as a fallback face (`ui_state.cpp`'s `font_faces[]`). Without it, `Rml::LoadFontFace` fails at every startup. |
+
+Lato is by Łukasz Dziedzic and Noto Emoji is by Google; both are under the **SIL Open Font
+License 1.1**, and RmlUi ships the licence text alongside them.
 
 The font's internal family name is **`LatoLatin`**, not `Lato`. RmlUi matches on the internal name,
 and registering the wrong one fails silently in a way that wastes hours: every element lays out and

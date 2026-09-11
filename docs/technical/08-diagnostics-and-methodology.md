@@ -28,6 +28,22 @@ or wait on something the current run writes (its last `AUTOPLAY -> phase` log li
 viewport and scissor together draws the layer wider and clips it straight back. Any experiment of
 that shape is worthless unless all three move together.
 
+## The interactive instrument: the HUD inspector
+
+The four rules above are about the limits of a captured frame and a log read afterwards. The HUD
+inspector exists to lift two of them for 2D work specifically: **F1** opens a window, inside RT64's
+own developer UI, that lists every 2D element of the current frame with its identity, extent and the
+class the classifier gave it; hovering a row outlines that element on screen, and a dropdown changes
+its class from the next frame with no rebuild and no restart.
+
+That is a different kind of instrument from everything else in this chapter — it answers while the
+frame is in front of you rather than in a log matched to a screenshot by eye, and rule 1 (someone has
+to say what they saw change) is satisfied by the person using it. It does not replace rule 2: a
+change made in the panel still has to be watched in motion before it is believed.
+
+It is on in every build, F1, nothing to set. **[`../HUD-INSPECTOR.md`](../HUD-INSPECTOR.md)** is the
+full guide; `BAR_INSPECTOR=0` turns the port's half off for an A/B.
+
 ## Headless scripted runs
 
 ### Scripted input — `BAR_AUTOPLAY`
@@ -126,7 +142,8 @@ virtualised 1536×864 view of a 1920×1080 window and produces an image that loo
 | `BAR_DBG_DIV=1` | The whole-frame divider `D_8001F7C0` alongside the game state |
 | `BAR_AUDIO_DBG=1` | Peak sample magnitude and saturation count |
 | `BAR_AUDIO_CAPTURE=<path>` | Dump the raw untransformed received audio stream (~16 MB cap) for offline analysis with no device open |
-| `BAR_HUD_TRACE=1` | Game state, race flag, whether anchoring is armed, and every 2D rectangle with the class it was given |
+| `BAR_HUD_TRACE=1` | Game state, race flag, whether anchoring is armed, and every 2D rectangle with the identity and class it was given. **Prefer the HUD inspector** (F1) — see below |
+| `BAR_INSPECTOR=0` | Turns the port's half of the F1 debug menu off, for an A/B against the fork's own classification. RT64's half stays on F1 either way, and `hud.json` tags still apply |
 | `BAR_DBG_RECT=1` *(RT64 fork)* | Every **distinct** 2D rectangle in framebuffer pixels, with cycle type, texturing, fill colour, scissor and framebuffer width |
 | `BAR_DBG_PROJ=1` *(RT64 fork)* | Every projection with its type (1 perspective / 2 orthographic / 3 rectangle), width, and whether the widescreen adjustment applied |
 | `BAR_DBG_SCISSOR=1` *(RT64 fork)* | The scissor rectangles the game emits — how the overscan inset was measured |

@@ -35,6 +35,30 @@ bool menu_capturing_input();
 // recomp::start(), because recompui builds its menus during renderer bring-up.
 void install();
 
+// ---- The game's controller ports, resolved by recompinput -------------------------------------
+//
+// With the frontend on, recompinput owns input: it holds the per-device profiles the Controls tab
+// edits, and profiles::get_n64_input is where a player's remapping is actually applied. A port that
+// reads SDL itself -- which this one did, through bar::input -- silently ignores every rebinding the
+// player has made, and never sees a pad at all, because recompinput::handle_events() is the only
+// thing draining the SDL queue and the hotplug events never reach anyone else.
+//
+// These two are the whole bridge. main.cpp calls them from bar_poll_keyboard and from the
+// connected-device callback; nothing else in the port includes a recompinput header.
+
+// True when this N64 port has something driving it. Player one always does -- a keyboard is always
+// attached -- and ports two to four exist once a second, third or fourth pad has been plugged in.
+bool port_assigned(int port);
+
+// This port's live N64 button mask, plus its analog stick in the N64's own +/-80 range. Returns 0
+// and a centred stick for an unassigned port. Applies the player's own bindings.
+uint16_t poll_port(int port, int8_t* stick_x, int8_t* stick_y);
+
+// Ask this port's pad to rumble, or stop. recompinput owns the motor when the frontend is on: it
+// ramps towards the level the General tab's Rumble Strength asks for, and pump_events() is what
+// drives that ramp. Requesting it anywhere else means a slider at 30% still rumbles at full.
+void set_port_rumble(int port, bool on);
+
 // Render-context factory for ultramodern's renderer_callbacks.create_render_context.
 //
 // recompui ships its own RT64Context (it has to, since it draws the UI over the game), so the port

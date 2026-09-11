@@ -129,7 +129,17 @@ cmake -S . -B build-frontend -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_CO
       -DCMAKE_BUILD_TYPE=Release -DBEETLE_ENABLE_UI=OFF -DBEETLE_ENABLE_FRONTEND=ON
 ```
 
-Three integration constraints, each of which broke the build once:
+**One local patch is required** before this configures into a working build:
+
+```bash
+python scripts/patch-recompinput.py      # idempotent; scripts/setup.* run it for you
+```
+
+It adds `recompinput::players::auto_assign_controllers`, without which the build does not link. See
+[05 — player assignment](technical/05-runtime-host.md#input-goes-through-recompinput) for why the
+port needs it. **Re-run it after every `git submodule update`**, which reverts it silently.
+
+Four integration constraints, each of which broke the build once:
 
 1. **`BEETLE_ENABLE_UI` and `BEETLE_ENABLE_FRONTEND` are mutually exclusive.** RecompFrontend
    vendors its own RmlUi and lunasvg under `recompui/lib`; adding ours as well defines the same
@@ -144,6 +154,14 @@ Three integration constraints, each of which broke the build once:
    CMake flags this as a standalone-build limitation. Our SDL2 FetchContent originally sat beside
    the `beetle-adventure-racing-recomp` target, far below, so the frontend configured with an empty include path
    (visible as a bare `-I\include` on the command line) and failed to find `SDL.h`.
+4. **Configure with `clang-cl`, not `clang++`.** Both are LLVM and both target the MSVC ABI, so
+   CMake reports `CMAKE_CXX_SIMULATE_ID` as `MSVC` for either — which is the condition this
+   project's root `CMakeLists.txt` (and RecompFrontend's own) use before appending `/W4`. Only
+   `clang-cl` accepts an MSVC-style flag; `clang++` rejects it with
+   `error: no such file or directory: '/W4'`, and it does so in lunasvg, RT64 and re-spirv rather
+   than anywhere that names the real problem. A build directory configured the wrong way can appear
+   to work for a long time, because the flag is only re-applied when a translation unit is
+   recompiled; it fails the first time anything triggers a rebuild.
 
 ### ROM verification
 

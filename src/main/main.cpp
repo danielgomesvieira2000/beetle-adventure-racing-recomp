@@ -15,6 +15,8 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <cmath>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <memory>
@@ -38,6 +40,7 @@
 #include "game/input_config.hpp"              // bar::input_config — 4-port controller settings (input.json)
 #include "main/bar_cheats.h"                  // bar_cheats — BAR cheat toggles (host-side RDRAM pokes)
 #include "main/bar_input.hpp"                 // bar::input — live 4-port runtime input path
+#include "main/bar_inspector.h"                // bar::inspector — the F1 HUD debug menu + hud.json
 #ifdef BEETLE_ENABLE_FRONTEND
 #include "frontend/bar_frontend.h"            // bar::frontend — RecompFrontend launcher/menus + input
 #endif
@@ -295,6 +298,10 @@ static ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callba
 #endif
 }
 
+// Defined with the audio backend below, which owns the flag it writes; update_gfx is where it is
+// called from, because this is the callback that runs on the thread owning the window.
+static void bar_update_window_focus();
+
 static void update_gfx(ultramodern::gfx_callbacks_t::gfx_data_t /*data*/) {
 #ifdef BEETLE_ENABLE_FRONTEND
     // recompinput owns the SDL queue and must be its ONLY poller -- a second loop would race it and
@@ -378,12 +385,24 @@ static void update_gfx(ultramodern::gfx_callbacks_t::gfx_data_t /*data*/) {
     }
 #endif // BEETLE_ENABLE_FRONTEND
 
-    // Shared by BOTH builds: the game's own per-frame input work. The frontend replaces the event
-    // PUMP, not the N64-port input path -- and mempak_flush_all in particular must keep running, or
-    // Controller Pak saves would never reach disk.
+#ifndef BEETLE_ENABLE_FRONTEND
+    // The headless build's own per-frame pad work. In the frontend build recompinput does both of
+    // these -- it samples the pads it opened, and pump_events() ramps and issues the rumble -- and
+    // bar::input has no pads to sample there anyway, because the hotplug events it used to watch for
+    // now go to recompinput's pump.
     bar::input::sample_all_ports();   // refresh every assigned pad's snapshot on this (main) thread
     bar::input::flush_rumble();       // issue SDL rumble for any port that wants it (main thread)
+#endif
+    // Shared by BOTH builds, and it must keep running in each: without it, Controller Pak writes --
+    // BAR's records, ghosts and settings -- would never reach disk.
     bar::input::mempak_flush_all();   // persist any Controller Pak writes (cheap no-op when clean)
+
+#ifdef BEETLE_ENABLE_FRONTEND
+    // Mute When Not In Focus, applied here because this is the callback that runs every frame with
+    // the window in hand. queue_samples runs on the game thread and has no business asking SDL about
+    // window state.
+    bar_update_window_focus();
+#endif
 }
 
 // Audio (audio_callbacks_t) — SDL2 queued-audio backend.
@@ -404,6 +423,46 @@ static uint32_t g_game_freq = 0;        // last freq the game requested (for cap
 static constexpr int kBarBytesPerFrame = 2 * (int)sizeof(int16_t);   // stereo s16
 static std::FILE* g_audio_capture = nullptr;
 static size_t g_audio_capture_bytes = 0;
+
+// ---- The Sound tab's two settings -------------------------------------------------------------
+//
+// Both are applied to the finished buffer in queue_samples, which is the last point this port owns
+// before the samples reach the sound card. That placement is also the limit of what can be done from
+// here: music and effects are already mixed together by the time they arrive, so a music-only volume
+// is not reachable without going into the game's own sequence players.
+//
+// Atomics because queue_samples runs on the game thread while the settings change on the UI thread
+// and the focus flag is written from update_gfx on the main thread. Defaults match what recompui
+// stores for a fresh profile, so the first frame before the Load callback fires is not silent.
+static std::atomic<int>  g_audio_volume{ 100 };         // Main Volume, 0-100
+static std::atomic<bool> g_mute_unfocused{ true };      // Mute When Not In Focus
+static std::atomic<bool> g_window_focused{ true };
+
+// Called once per frame from update_gfx, which is the callback that runs on the thread owning the
+// window. Reading SDL window state from the game thread instead would be a data race.
+static void bar_update_window_focus() {
+    const bool focused = g_window == nullptr ||
+                         (SDL_GetWindowFlags(g_window) & SDL_WINDOW_INPUT_FOCUS) != 0;
+    g_window_focused.store(focused, std::memory_order_relaxed);
+}
+
+extern "C" void bar_set_audio_volume(double percent) {
+    const int clamped = (int)std::lround(std::clamp(percent, 0.0, 100.0));
+    const int previous = g_audio_volume.exchange(clamped, std::memory_order_relaxed);
+    if (clamped == previous) {
+        return;
+    }
+    // Worth a line, because this setting used to do nothing at all: anyone who left the slider at
+    // zero while it was inert now has a port that is correctly silent, and this is where that is
+    // explained rather than guessed at.
+    std::fprintf(stderr, "[beetle-adventure-racing-recomp] main volume: %d%%%s\n", clamped,
+                 clamped == 0 ? " -- the game will be silent until the Sound tab's Main Volume is raised" : "");
+    std::fflush(stderr);
+}
+
+extern "C" void bar_set_mute_when_unfocused(bool mute) {
+    g_mute_unfocused.store(mute, std::memory_order_relaxed);
+}
 
 static bool bar_audio_play_enabled() {
     // Audio output ON by default; BAR_NO_AUDIO disables the device (and the ucode, see get_rsp_microcode).
@@ -466,6 +525,28 @@ static void queue_samples(int16_t* samples, size_t count) {
         extern int g_bar_audio_peak; extern long g_bar_audio_clip;
         for (size_t i = 0; i < count; i++) { int a = out[i] < 0 ? -(int)out[i] : out[i];
             if (a > g_bar_audio_peak) g_bar_audio_peak = a; if (a >= 32760) g_bar_audio_clip++; } } }
+    // The Sound tab, applied last so the diagnostics above still measure what the game produced
+    // rather than what the player chose to hear. Integer-scaled, and only when the volume is not
+    // full, so the common case is the copy it always was; a percentage of a signed 16-bit sample
+    // cannot overflow it.
+    {
+        int gain = g_audio_volume.load(std::memory_order_relaxed);
+        if (g_mute_unfocused.load(std::memory_order_relaxed) &&
+            !g_window_focused.load(std::memory_order_relaxed)) {
+            gain = 0;
+        }
+        // Silence is queued as zeroes rather than by queueing nothing. get_frames_remaining reports
+        // the depth of this queue, and the game -- and this port's frame limiter -- pace themselves
+        // from that answer, so a muted game that queued nothing would be told it was starving and
+        // would run away from its own clock.
+        if (gain == 0) {
+            std::fill(out.begin(), out.end(), int16_t{ 0 });
+        } else if (gain != 100) {
+            for (size_t i = 0; i < count; i++) {
+                out[i] = (int16_t)((int32_t)out[i] * gain / 100);
+            }
+        }
+    }
     SDL_QueueAudio(g_audio_dev, out.data(), (Uint32)(count * sizeof(int16_t)));
 }
 
@@ -500,6 +581,22 @@ static void set_frequency(uint32_t freq) {
 // (bar::input); its buttons/stick come from bar_poll_keyboard -> bar::input::resolve_port, resolving
 // the port's assigned device (keyboard or a specific SDL pad) through its rebindable bindings. The
 // Controls dialog (src/ui) edits that config.
+// Which of BAR's four controller ports has something driving it.
+//
+// The two builds answer this from different places, and the difference is the whole point of the
+// frontend build. With the frontend on, recompinput owns the devices: it is the only thing draining
+// SDL's event queue, so it is the only thing that ever learns a pad was plugged in, and its profiles
+// are where the Controls tab's remapping lives. bar::input still exists in that build -- it owns the
+// Controller Pak and the per-port pak type -- but it has no pads, so asking it which ports are
+// occupied would answer "only the keyboard one", forever.
+static bool bar_port_connected(int port) {
+#ifdef BEETLE_ENABLE_FRONTEND
+    return bar::frontend::port_assigned(port);
+#else
+    return bar::input::port_connected(port);
+#endif
+}
+
 static void input_poll() {
     // Deliberately empty. wave-race-64-recomp pumps recompinput from here, but ultramodern does not
     // call this callback until a game is running — and this port sits at the launcher with no game
@@ -515,7 +612,7 @@ static void input_poll() {
 extern "C" uint16_t bar_poll_keyboard(int port, int8_t* stick_x, int8_t* stick_y);
 
 static bool input_get(int controller_num, uint16_t* buttons, float* x, float* y) {
-    if (!bar::input::port_connected(controller_num)) {
+    if (!bar_port_connected(controller_num)) {
         return false;   // this N64 port has no controller / device assigned
     }
     int8_t sx = 0, sy = 0;
@@ -527,12 +624,19 @@ static bool input_get(int controller_num, uint16_t* buttons, float* x, float* y)
 }
 
 static void input_set_rumble(int controller_num, bool rumble) {
+#ifdef BEETLE_ENABLE_FRONTEND
+    // recompinput owns the motor with the frontend on: it scales the request by the General tab's
+    // Rumble Strength and ramps it, which bar::input cannot do because it never opened the pad --
+    // the SDL hotplug events that would have told it go to recompinput's pump instead.
+    bar::frontend::set_port_rumble(controller_num, rumble);
+#else
     bar::input::set_rumble(controller_num, rumble);
+#endif
 }
 
 static ultramodern::input::connected_device_info_t input_get_device_info(int controller_num) {
     using namespace ultramodern::input;
-    if (!bar::input::port_connected(controller_num)) {
+    if (!bar_port_connected(controller_num)) {
         return connected_device_info_t{ Device::None, Pak::None };
     }
     // A Rumble Pak is surfaced to the high-level path so ultramodern's osMotorInit succeeds; a
@@ -706,7 +810,16 @@ extern "C" uint16_t bar_poll_keyboard(int port, int8_t* stick_x, int8_t* stick_y
     // Only read the keyboard while our window actually holds input focus, so we don't drive the car
     // when the user has tabbed away. SDL tracks focus the same way on every platform.
     if (g_window != nullptr && !(SDL_GetWindowFlags(g_window) & SDL_WINDOW_INPUT_FOCUS)) return 0;
+#ifdef BEETLE_ENABLE_FRONTEND
+    // recompinput's profiles are where the player's own remapping is applied, so the port has to ask
+    // for its buttons here rather than reading SDL itself. bar::input::resolve_port does read SDL --
+    // and it still works for the keyboard, which is global state -- but it knows about no pad at all
+    // in this build, and it applies bar::input_config's bindings rather than the ones the Controls
+    // tab writes. Every rebinding a player made was silently ignored.
+    return bar::frontend::poll_port(port, stick_x, stick_y);
+#else
     return bar::input::resolve_port(port, stick_x, stick_y);
+#endif
 }
 
 // Error handling (error_handling::callbacks_t). ultramodern calls this for FATAL startup errors — most
@@ -1006,6 +1119,12 @@ int main(int argc, char** argv) {
     // primary font has been registered by then.
     bar::frontend::install();
 #endif
+
+    // The HUD inspector. Both calls must precede recomp::start(), which brings the renderer up: the
+    // classifier in the RT64 fork consults the tag table and the element hook from the very first
+    // display list it sees.
+    bar::inspector::init();
+    bar::inspector::install();
 
     // Blocks until the game exits.
     recomp::start(config);

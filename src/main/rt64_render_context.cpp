@@ -419,7 +419,20 @@ float RT64Context::get_resolution_scale() const {
 // Factory wired into main.cpp's renderer_callbacks.create_render_context.
 std::unique_ptr<ultramodern::renderer::RendererContext>
 bar_create_rt64_render_context(uint8_t* rdram, ultramodern::renderer::WindowHandle window_handle, bool developer_mode) {
-    auto context = std::make_unique<RT64Context>(rdram, window_handle, developer_mode);
+    // RT64's developer mode, on unconditionally.
+    //
+    // Every path to RT64's debug UI is gated on it: the F1 key handler, the event filter RT64
+    // installs for itself, and State::inspect() at the other end -- which is also where the port's
+    // HUD inspector is drawn. A debug menu that only exists in a build made for it is a debug menu
+    // nobody has when they need it; the person looking at a misplaced HUD element is running the
+    // game they downloaded.
+    //
+    // Nothing is drawn until F1 is pressed: RT64 creates its inspector on the keystroke and
+    // State::inspect() returns immediately while there is none, so the cost of leaving this on is a
+    // null check per frame. F2 is unbound in the fork for the same reason -- see
+    // lib/rt64/src/hle/rt64_application.cpp.
+    (void)developer_mode;
+    auto context = std::make_unique<RT64Context>(rdram, window_handle, true);
     if (context->valid()) {
         g_bar_renderer_ready.store(true);
     }

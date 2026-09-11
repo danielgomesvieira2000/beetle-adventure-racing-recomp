@@ -24,6 +24,12 @@ add_sub https://github.com/bryankruman/N64Recomp.git        lib/N64Recomp
 echo ">> Updating submodules recursively..."
 git submodule update --init --recursive
 
+# RecompFrontend's input layer only assigns controllers to players through a modal, which leaves a
+# plugged-in pad driving nothing until someone has been through it. See the script for the whole
+# story. Idempotent, and it must run after every submodule update, which would revert it.
+echo ">> Patching RecompFrontend/recompinput..."
+python3 scripts/patch-recompinput.py
+
 echo ">> Building N64Recomp + RSPRecomp (Release)..."
 cmake -S lib/N64Recomp -B lib/N64Recomp/build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build lib/N64Recomp/build --config Release

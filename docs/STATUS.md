@@ -17,6 +17,61 @@ _Last updated: 2026-07-03_
   + render-res/MSAA/SSAA/divot seam fixes + letterbox controls all landed (see **[TODO.md](TODO.md)**). Of
   the original four WIP items, audio is done; **legal-screen skip, menu-transition flash, and track-map fps remain.**
 
+## Frontend brought up to the reference port (2026-09-11)
+
+The RecompFrontend build was rebuilt to match `wave-race-64-recomp`, this project's reference port.
+Four things were wrong rather than merely different, and each was invisible in a screenshot:
+
+1. **No gamepad worked.** `bar::input` built its device list from `SDL_CONTROLLERDEVICEADDED`, which
+   recompinput's pump consumes and never forwards. Input now resolves through
+   `recompinput::profiles::get_n64_input`, with a per-frame pad re-scan and automatic player
+   assignment in connection order (`scripts/patch-recompinput.py`, mirroring the reference port).
+2. **The Controls tab remapped nothing.** It writes `controls.json`, which only recompinput reads,
+   while the game was resolved from `bar::input_config`'s own tables.
+3. **Main Volume was inert**, as was rumble strength. Both are now applied.
+4. **`NotoEmoji-Regular.ttf` was missing**, and recompui loads it unconditionally, so
+   `Rml::LoadFontFace` failed at every startup. The whole Lato family is staged now.
+
+Also: the launcher draws this project's icon as its background (`scripts/make-launcher-logo.py`),
+the keyboard defaults are the ones this port documents rather than RecompFrontend's, there is a Mods
+entry and a Quit entry, and a first run with no `graphics.json` starts fullscreen.
+
+`bar::input` is **not** retired — it still owns the Controller Pak and is the whole input path in the
+headless build. See [technical/05](technical/05-runtime-host.md#input-goes-through-recompinput).
+
+**Both build directories had to be reconfigured**: they had been configured with `clang++` rather
+than `clang-cl`, which appends `/W4` on a driver that does not accept it. That only fails when
+something triggers a recompile, so it can sit latent for weeks.
+
+## The HUD inspector — the F1 debug menu (2026-09-11)
+
+Ported from `wave-race-64-recomp`. **F1** opens RT64's developer UI with a
+**Beetle Adventure Racing HUD** window inside it: every 2D element of the current frame, with its
+identity, extent and the class the classifier gave it; hover to outline it on screen, click to pin
+the outline, and change its class from a dropdown that takes effect on the next frame. **Save to
+hud.json** writes the result to `%LOCALAPPDATA%eetle-adventure-racing-recomp\hud.json`, which is
+read at startup and applies with the panel off. Full guide: [HUD-INSPECTOR.md](HUD-INSPECTOR.md).
+
+Three things changed underneath it:
+
+* **Two new classes.** `stretch` (`G_EX_ASPECT_STRETCH`) and `spill` (lift the 4:3 scissor for one
+  draw) join `center`/`left`/`right`. **Neither has a built-in user yet** — nothing in the positional
+  heuristic returns them, so they only reach the renderer through a tag, and they should be treated
+  as untested against real BAR elements until something has been tagged with each and looked at.
+* **Tags work everywhere; the heuristic is still racing-only.** `classifyRect` now runs for every 2D
+  rectangle rather than only during a race, because that is also what publishes the element list. The
+  positional band heuristic is unchanged and still gated on `BarHud::racing()`, so **menus look
+  exactly as before unless an element is explicitly tagged**.
+* **RT64's developer mode is on unconditionally, and F2 is unbound.** Developer mode is what gates
+  every path to the debug UI, and a debug menu that only exists in a build made for it is one nobody
+  has when they need it. Turning it on also arms RT64's other shortcuts, and F2 toggles ray tracing
+  for the session with nothing on screen to say so — the fork removes that case from both key
+  filters. F3 (view RDRAM) and F4 (texture replacements) stay.
+
+**The RT64 fork has uncommitted changes** (`lib/rt64`, branch `bar/hide-overscan-margins`):
+`rt64_bar_hud.{h,cpp}`, `rt64_rdp.cpp`, `rt64_state.cpp`, `rt64_application.cpp`. They need
+committing and pushing there before the submodule pointer here can move.
+
 ## Current WIP — polish items (2026-06-30)
 
 Four issues were raised together; each was investigated with a verified multi-agent workflow. Status:

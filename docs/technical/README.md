@@ -34,7 +34,8 @@ live one directory up: [`../STATUS.md`](../STATUS.md), [`../TODO.md`](../TODO.md
 [`../KNOWN_ISSUES.md`](../KNOWN_ISSUES.md), [`../PORT-STATUS.md`](../PORT-STATUS.md),
 [`../PINNED_REVISIONS.md`](../PINNED_REVISIONS.md). Deep single-topic investigations live in
 [`../RACING_DRAW_MAP.md`](../RACING_DRAW_MAP.md), [`../HUD_MENU_SYSTEM_MAP.md`](../HUD_MENU_SYSTEM_MAP.md),
-[`../SEAM_FIX_PLAN.md`](../SEAM_FIX_PLAN.md) and [`../SETTINGS_MENU_AND_HIGH_FPS.md`](../SETTINGS_MENU_AND_HIGH_FPS.md);
+[`../SEAM_FIX_PLAN.md`](../SEAM_FIX_PLAN.md), [`../SETTINGS_MENU_AND_HIGH_FPS.md`](../SETTINGS_MENU_AND_HIGH_FPS.md)
+and [`../HUD-INSPECTOR.md`](../HUD-INSPECTOR.md), which is the guide to the F1 debug menu;
 this reference links into them rather than duplicating them.
 
 ---
@@ -56,7 +57,9 @@ follow-up commit. The mapping from work to document:
 | `patches/`, `patches.toml`, `scripts/build-patches.sh`, `tools/gen_reference_syms.py` | [07](07-codegen-fixups-and-patches.md) |
 | `src/main/overlay_bridge.cpp`, `register_overlays.cpp`, `hw_stubs.cpp`, `os_unimpl_stubs.cpp` | [04](04-static-recompilation.md) and [05](05-runtime-host.md) |
 | `src/main/main.cpp` callbacks, audio, input, `bar_input.cpp`, `bar_preempt.cpp` | [05](05-runtime-host.md) |
+| `src/frontend/`, `assets/ui/`, `scripts/make-launcher-logo.py`, `scripts/patch-recompinput.py` | [05](05-runtime-host.md) |
 | `src/main/bar_frustum.cpp`, `rt64_render_context.cpp`, the RT64 fork's BAR-specific code | [06](06-graphics.md) |
+| `src/main/bar_inspector.cpp`, `lib/rt64/src/hle/rt64_bar_hud.*`, the HUD classes or `hud.json`'s format | [06](06-graphics.md) and [`../HUD-INSPECTOR.md`](../HUD-INSPECTOR.md) |
 | A new `BAR_*` environment variable, or one removed | [08](08-diagnostics-and-methodology.md) |
 | A new fact about the game itself — an address, an offset, a struct field, a state value | [01](01-game-and-rom.md), [02](02-engine-and-modules.md) or [06](06-graphics.md), whichever owns it |
 
