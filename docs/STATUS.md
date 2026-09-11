@@ -32,6 +32,14 @@ Four things were wrong rather than merely different, and each was invisible in a
 4. **`NotoEmoji-Regular.ttf` was missing**, and recompui loads it unconditionally, so
    `Rml::LoadFontFace` failed at every startup. The whole Lato family is staged now.
 
+**The pause screen's backdrop now covers the widened frame**, which took the inspector to find and
+two new mechanisms to fix. It is orthographic geometry, so it never appeared in the rectangle list at
+all; the port's own "the needle is the only orthographic projection in a race frame" rule was pinning
+it to the left edge, where nothing could widen it; and once that was fixed per projection, `stretch`
+still left BAR's overscan inset behind because the quad is drawn inset *within* the layer. Tagging
+`ortho:5` and `ortho:7` with the new `cover` class closes it. Every projection is now listed and
+taggable, not just orthographic ones.
+
 Also: the launcher draws this project's icon as its background (`scripts/make-launcher-logo.py`),
 the keyboard defaults are the ones this port documents rather than RecompFrontend's, there is a Mods
 entry and a Quit entry, and a first run with no `graphics.json` starts fullscreen.

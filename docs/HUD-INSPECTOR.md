@@ -52,20 +52,50 @@ build too:
 state 5   frame 1851   5 elements
 [ ] Hold this frame   [ Save to hud.json ]   [ Clear overrides ]
 [ part of an identity ] filter
- #  identity                        x         y         class
- 0  tex:0x0F8A20  dl:0x8021C4E0     25..77    21..53    left     v
- 1  tex:0x0F91C0  dl:0x8021C4E0     208..293  21..42    right    v
- 2  tex:0x0FA040  dl:0x8021C560     236..292  51..68    right    v
- 3  tex:0x0FB880  dl:0x8021C700     235..291  149..205  right    v
- 4  tex:0x0FC120  dl:0x8021C700     232..290  205..222  right    v
+ #  identity                        kind   x         y         class
+ 0  tex:0x000F8A20  dl:0x8021C4E0   tex    25..77    21..53    left     v
+ 1  tex:0x000F91C0  dl:0x8021C4E0   tex    208..293  21..42    right    v
+ 2  tex:0x000FA040  dl:0x8021C560   tex    236..292  51..68    right    v
+ 3  dl:0x8021C700   untex           untex  0..320    0..240    center   v
+ 4  fill:0x00010001 dl:0x8021C700   fill   0..320    0..240    center   v
 ```
 
 | Column | Meaning |
 |---|---|
 | `#` | Position in this frame's display list. Not stable between frames. |
-| `identity` | What `hud.json` and the traces call this element. `tex:0x…` is the last `G_SETTIMG` texture image address; `dl:0x…` is the display list the draw came from. **Either string can be tagged**, and both are shown because neither alone is enough — a texture address identifies an element drawn from several lists, and a display list address identifies an untextured one. |
+| `identity` | What `hud.json` calls this element. **This is the string you tag**, and which scheme it uses depends on the draw — see below. The second string is a weaker fallback, and can also be tagged. |
+| `kind` | `tex`, `fill` or `untex`: which identity scheme this row got. Two rows can otherwise look alike and behave completely differently. |
 | `x`, `y` | Extent in the game's own 320×240 pixels, before any widescreen arithmetic. |
 | `class` | What the classifier decided, as a dropdown. A `*` after it means you have overridden it. |
+
+**Identities are not all texture addresses.** An untextured rectangle carries whatever `G_SETTIMG`
+last set, which belongs to some *other* element entirely, so identifying one by texture address gives
+two unrelated draws the same name. That is not hypothetical: the pause screen's translucent black
+overlay and the menu text beneath it came out sharing a `tex:` address, and tagging the overlay
+stretched the text. So:
+
+| `kind` | Identity | Second | Because |
+|---|---|---|---|
+| `tex` | `tex:<G_SETTIMG address>` | `dl:<display list>` | A textured element is named by its texture; the display list separates two uses of one texture. |
+| `fill` | `fill:<fill colour>` | `dl:<display list>` | A fill-cycle rectangle has no texture. Its colour is far more specific than its display list and stable between frames — a backdrop keeps its colour. |
+| `untex` | `dl:<display list>` | `untex` | A shaded or blended rectangle — what a translucent overlay is. The display list is all there is, so it *is* the identity, and the texture address is deliberately not offered because it belongs to somebody else. |
+| `persp` `ortho` `rect` `proj` | `<kind>:<projection index>` | — | A whole **projection**, not a single draw: the 3D world, 2D drawn as geometry, the layer rectangles are drawn into, anything else. A projection is the only handle on anything drawn as geometry, because individual triangles are not hooked. |
+
+**Projection rows mean something different from element rows:** `left` and
+`right` give the layer a viewport origin, `center` lets it be widened with its aspect ratio
+compensated (content proportional, more empty space either side), `stretch` suppresses that
+compensation so the layer's 320-wide space maps across the whole frame, and `spill` is meaningless
+and treated as `center`. The projection index is the one RT64's own Game editor shows — its
+`Orthographic #4` is `ortho:4` here.
+
+Two warnings specific to them. **The outline is the projection's scissor**, which for a full-screen
+layer is the whole screen, so hovering will not tell two such layers apart — try them one at a time
+instead. And **`ortho:<n>` is positional**, which makes it the weakest identity of the four: a
+projection order that differs between screens moves the tag onto a different layer.
+
+A `dl:` identity is the next weakest: several draws can share one display list, so a tag on
+one may catch its neighbours. Check the outline before believing it, and if it over-matches, say so
+— the element needs something more specific than this scheme currently provides.
 
 The header's `state` is `currentGameState` (`gGameSettings + 0xA4`): **14** in the Controller Pak
 prompts and every front-end menu, **2** for the boot attract sequence, **5** for a race. See
@@ -81,15 +111,16 @@ prompts and every front-end menu, **2** for the boot attract sequence, **5** for
 | **Clear overrides** | Drops every override. Does not touch `hud.json`. |
 | **filter** | Substring match on either identity. |
 
-### The five classes
+### The six classes
 
 | Class | What the fork emits | Use it for |
 |---|---|---|
 | `center` | Nothing. The element stays in the 4:3 box in the middle. | Anything that should keep its shape and position: HUD readouts, menu text. |
 | `left` | `G_EX_ORIGIN_LEFT` on both edges, plus a widened scissor for that draw | An element pinned to the left edge of the screen. |
 | `right` | `G_EX_ORIGIN_RIGHT` on both edges, plus a widened scissor | An element pinned to the right edge. |
-| `stretch` | `rectAspect = G_EX_ASPECT_STRETCH`, origins left `G_EX_ORIGIN_NONE` | Backgrounds, full-screen overlays, menu wipes — anything that should cover the widened frame. |
+| `stretch` | `rectAspect = G_EX_ASPECT_STRETCH`, origins left `G_EX_ORIGIN_NONE`, plus a widened scissor | Backgrounds, full-screen overlays, menu wipes — anything that should cover the widened frame. |
 | `spill` | Nothing about placement. The game's 4:3 scissor is lifted for that draw only. | An element that is already in the right place at the right size and is merely being **cut off** at the old frame's edge. |
+| `cover` | **Projections only.** `stretch`, and then magnify the layer's content about its centre by 320/274 and 240/206 — about 1.167 — putting BAR's overscan-safe rectangle on the frame's edges. | A layer whose geometry is authored inset for a television and so cannot reach the edges however the layer itself is scaled. The pause screen's backdrop is the worked example. |
 
 Two distinctions that cost people days:
 
@@ -141,9 +172,24 @@ isolates the two.
 }
 ```
 
-An identity that has earned its place there should eventually move into the fork's own classifier, so
-that a build carries it without a local file. A `hud.json` repeating what the code already does is
-not wrong, but it is one more thing that can disagree.
+### Promoting a tag
+
+`hud.json` is where an element is **identified**, against a running game. Once the answer is known it
+belongs in the build, so that everyone has it and nobody needs the right file in their settings
+folder. Move the identity into `sBuiltinTags` in `lib/rt64/src/hle/rt64_bar_hud.cpp`:
+
+```cpp
+static const BuiltinTag sBuiltinTags[] = {
+    { "tex:0x003C6E20", Class::Center },
+};
+```
+
+and then clear it out of `hud.json`. The built-in table is consulted **after** the panel's override
+and `hud.json`, so both still win over it — which is what lets a promoted answer be checked against a
+different one without editing the array.
+
+A `hud.json` repeating what the code already does is not wrong, but it is one more thing that can
+disagree.
 
 ---
 
@@ -164,6 +210,34 @@ reads the last frame that was completed. They swap under a lock, once per displa
 lookup is behind an atomic flag that is false whenever both tables are empty, so the common case
 costs one relaxed load per rectangle rather than an uncontended lock.
 
+### Why `cover` exists, and how it was measured
+
+`stretch` scales a layer; it does not resize the geometry inside it. BAR's pause backdrop is the
+worked example. With its orthographic projection tagged `stretch`, the layer's full 320-wide space
+does span the frame — and the backdrop still stopped short, because the quad is drawn at BAR's
+overscan-safe rectangle *inside* that space.
+
+The measurement that settled it, taken by sampling row brightness across a 1536×864 capture of a
+paused race in the region clear of the panel:
+
+```
+y= 64   131.7
+y= 72   148.3
+y= 80    74.1   <- the backdrop's top edge
+```
+
+A hard step at y ≈ 78 of 864: **9% of the frame height, 21 of 240 game pixels**. Not a stretch that
+fell short — the inset, exactly, matching the 22 and 17 that
+[`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) records for the overscan mask.
+
+`cover` magnifies the layer by the ratio that puts that rectangle on the frame's edges, which is what
+finally closed it. `BAR_HUD_COVER_INSET="l,t,r,b"` overrides the rectangle without a rebuild, since
+it is measured from one game.
+
+**What it costs:** anything the layer draws *outside* the inset rectangle is pushed off the frame.
+That is inherent to magnifying, and why `cover` is tagged onto a backdrop rather than applied by
+default.
+
 ### Differences from the Wave Race version
 
 * **The classifier is in the renderer, not the port.** Wave Race rewrites display lists port-side
@@ -171,10 +245,9 @@ costs one relaxed load per rectangle rather than an uncontended lock.
   the other way round — RT64 calls out to the port, through pointers the port installs — and the
   element list is available in **both** the frontend and the headless build, where Wave Race's needs
   `build-fe`.
-* **Rectangles only.** `RDP::drawRect` is hooked; `drawTris` is not. BAR's HUD is made of texture
-  rectangles with one exception, the speedometer needle, which is orthographic geometry and is
-  already handled whole by `BarHud::orthoViewportOrigin` — see
-  [technical/06](technical/06-graphics.md#anchoring-the-hud-to-a-widened-frame). There is no `proj`
-  column for the same reason: every row is a rectangle.
-* **No `dl:`-only elements yet.** Both identities are always shown; an untextured rectangle simply
-  carries whatever `tex:` address was last set, so prefer the `dl:` half when tagging one.
+* **Rectangles and orthographic projections, but not triangles.** `RDP::drawRect` is hooked and so
+  is the projection processor; `drawTris` is not. A piece of geometry can therefore be tagged through
+  the projection that draws it, but never on its own.
+* **Three identity schemes rather than two.** Wave Race names an element by texture or by display
+  list; BAR adds `fill:<colour>` for fill-cycle rectangles, and makes `dl:` the *primary* identity of
+  an untextured draw rather than its fallback. See [Identities](#the-window) above for why.

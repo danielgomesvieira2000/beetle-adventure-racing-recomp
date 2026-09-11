@@ -29,7 +29,7 @@ namespace bar::inspector {
 // The classes the classifier can give an element, in the order the panel offers them. Must match
 // RT64::BarHud::Class in lib/rt64/src/hle/rt64_bar_hud.h -- the value is the wire format shared by
 // the dropdown, the hook and hud.json.
-enum Class : int { kCenter = 0, kLeft = 1, kRight = 2, kStretch = 3, kSpill = 4 };
+enum Class : int { kCenter = 0, kLeft = 1, kRight = 2, kStretch = 3, kSpill = 4, kCover = 5 };
 
 // Whether the panel is running. hud.json tags are applied either way; this only governs the window
 // and the per-frame element list.

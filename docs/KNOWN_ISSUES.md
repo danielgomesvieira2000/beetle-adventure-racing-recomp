@@ -5,6 +5,41 @@ Add the negative results, not just the leads — they are the expensive part.
 
 ---
 
+## OPEN -- Intermittent crash at boot in `_uvScDoneAud` -> `osSendMesg`
+
+**Seen once, 11 Sep 2026**, on a launch of the frontend build that had started cleanly on the
+immediately preceding and following attempts with the same binary and the same settings folder. The
+crash handler caught it during bring-up, after `create_render_context: ok` and before the game had
+been started from the launcher:
+
+```
+*** CRASH code=0xc0000005 addr=00007FF72498D4BA ***
+  # 0 do_send +0x3a
+  # 1 osSendMesg +0x4b
+  # 2 osSendMesg_recomp +0x18
+  # 3 _uvScDoneAud +0xd5
+  # 4 _uvScHandleRSP +0x97
+  # 5 _uvScMain +0x21b
+  # 6 run_thread_function +0x1fc
+```
+
+An access violation inside `do_send`, on the scheduler's own thread, delivering the message that
+retires a finished audio task. **Not reproduced**, so there is nothing measured here beyond the
+stack -- it is written down because an intermittent crash with a stack is exactly the thing that gets
+lost, and the next person to see it should not have to establish that it has been seen before.
+
+What was and was not going on at the time: this was the first launch after the HUD inspector landed,
+and a controller was connected where earlier launches that day had none, so the input path through
+`recompinput` was live. Neither is evidence — the inspector's hooks are on the display-list thread
+and touch nothing in this stack, and the port's audio changes that day are host-side, downstream of
+the game's scheduler. **Do not treat either as the cause without measuring.**
+
+The neighbourhood is known to be delicate: `_uvScDoneAud` sits under the cooperative-preemption and
+audio-starvation work described in [`technical/05`](technical/05-runtime-host.md#threading-and-the-audio-starvation-problem),
+and `BAR_NO_PREEMPT=1` is the first switch to try if it recurs.
+
+---
+
 ## RESOLVED -- Widescreen: the picture sat in a 275x207 island even with a full-frame scissor and viewport
 
 **Resolved (6 Sep 2026), rt64 `cebfce7`.** The island was not a transform at all: it was the game's

@@ -180,10 +180,71 @@ Four findings, each of which bought a specific correctness property:
   which converts to the centred 4:3 region, so an element moved to an edge is drawn outside its own
   scissor and vanishes. This is exactly how the speedometer needle disappeared while its dial
   anchored correctly.
-* **The needle is orthographic geometry, not a texture rectangle.** It draws under the only
-  orthographic projection in a race frame (320 wide). Confirmed twice: leaving orthographic
-  projections unscaled moved the needle out of the dial while nothing else changed, and anchoring
-  that projection by giving it a left viewport origin moved nothing else in a race.
+* **The needle is orthographic geometry, not a texture rectangle.** It draws under an orthographic
+  projection (320 wide). Confirmed twice: leaving orthographic projections unscaled moved the needle
+  out of the dial while nothing else changed, and anchoring that projection by giving it a left
+  viewport origin moved nothing else in a race.
+
+  The claim originally made here — "the *only* orthographic projection in a race frame", and so safe
+  to anchor whole — is **false**, and was refuted by the pause screen. A paused race keeps
+  `currentGameState == 5`, and the pause menu's darkened backdrop is orthographic geometry too.
+  Anchoring every orthographic projection therefore pinned the backdrop to the left edge, where it
+  could never be widened: `adjustAspectRatio` requires `viewportOrigin == G_EX_ORIGIN_NONE`. The
+  layers are now classified **per projection** instead — see below.
+
+### Projections are classified one at a time
+
+`BarHud::classifyProjection(kind, projectionIndex, scissor, publish)` answers for one projection what
+`classifyRect` answers for one rectangle, with the same precedence — panel override, `hud.json`,
+built-in table, then the default. The default is the old whole-layer rule: `Left` while racing,
+`Center` otherwise.
+
+**Every projection is offered, not only the orthographic ones.** A projection is the only handle
+there is on anything drawn as geometry, because individual triangle draws are not hooked. Only
+orthographic layers carry a default, so listing the rest changes nothing until one is tagged:
+
+| Identity | Kind |
+|---|---|
+| `persp:<n>` | the 3D world |
+| `ortho:<n>` | 2D drawn as geometry — the needle, the pause backdrop |
+| `rect:<n>` | the layer texture rectangles are drawn into |
+| `proj:<n>` | anything else |
+
+The identity's number *n* is the projection index **RT64's own debugger already puts on
+screen** (`Orthographic #4` in its Game editor), so what is seen there and what is tagged are the
+same thing. It is the weakest of the identity schemes, because it is positional: a projection order
+that differs between screens moves the tag onto a different layer. Check the outline before promoting
+one.
+
+What the classes mean for a whole projection, which is not quite what they mean for a rectangle:
+
+| Class | Effect |
+|---|---|
+| `left` / `right` | A viewport origin, pinning the layer to that edge. What the needle wants. |
+| `center` | No origin; the normal widening path runs, which **compensates** the projection's aspect ratio — content stays proportional and more empty space is revealed either side. |
+| `stretch` | Suppresses that compensation (`adjustAspectRatio = false`), so the layer's own 320-wide space maps across the full widened frame and its content stretches with it. |
+| `spill` | No meaning for a projection; treated as `center`. |
+| `cover` | `stretch`, then magnify the layer's content about its centre by 320/274 and 240/206 (≈ 1.167), putting BAR's overscan-safe rectangle on the frame's edges. `BAR_HUD_COVER_INSET="l,t,r,b"` overrides that rectangle. |
+
+**Two call sites must agree.** `ProjectionProcessor` transforms the layer and `FramebufferRenderer`
+places its viewport, and both ask `classifyOrtho` the same question. If they ever disagree the layer
+is placed by one rule and transformed by the other. Only the first passes `publish`, so the inspector
+lists each projection once.
+
+**A measured negative result: `stretch` does not make BAR's pause backdrop reach the frame's edges.**
+It does what it says — the layer's 320-wide space spans the frame — but the backdrop quad is drawn at
+BAR's overscan-safe rectangle *inside* that space, so a margin survives. Measured off a 1536×864
+capture of a paused race with `ortho:5` and `ortho:7` both tagged `stretch`: the dark region's left
+edge sits at 6.8 % of the frame width (≈ 22 game pixels) and its top edge at 8.7 % of the height
+(≈ 21 game pixels), against the inset of 22 and 17 recorded in
+[`../KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) for the overscan mask.
+
+**`cover` is what closes it**, and it is the class that exists because of this measurement: it
+magnifies the layer by the ratio that puts the inset rectangle on the frame's edges (320/274 and
+240/206). Confirmed on the pause screen — the backdrop reaches every edge with the projection tagged
+`cover` where `stretch` left the inset behind. The cost is inherent: anything the layer draws outside
+that rectangle is magnified off the frame, so `cover` is tagged onto a backdrop, never applied by
+default.
 
 ### Knowing when the HUD is on screen
 
@@ -222,8 +283,19 @@ positions), *Original* restores centred placement.
 ### Tags, and the five classes
 
 The positional heuristic above is only the second of two things that decide an element's class. The
-first is a **tag**, looked up by the element's identity — `tex:0x…`, the last `G_SETTIMG` address, or
-`dl:0x…`, the display list the draw came from. Tags come from the HUD inspector's live dropdown and
+first is a **tag**, looked up by the element's **identity**, which is built from whichever of three
+schemes fits the draw:
+
+| Draw | Identity | Second |
+|---|---|---|
+| Textured | `tex:<G_SETTIMG address>` | `dl:<display list>` |
+| Fill cycle | `fill:<fill colour>` | `dl:<display list>` |
+| Untextured, not fill | `dl:<display list>` | `untex` |
+
+The split is not cosmetic, and was found the expensive way: an untextured rectangle carries whatever
+`G_SETTIMG` last set, so naming one by texture address gives two unrelated draws the same identity.
+The pause screen's translucent black overlay and the menu text beneath it shared a `tex:` address,
+and tagging the overlay stretched the text instead. Tags come from the HUD inspector's live dropdown and
 from `hud.json` in the settings folder, and unlike the heuristic they apply **everywhere**, menus
 included. That split is deliberate: the heuristic is a guess that is only safe during a race, while a
 tag is somebody's explicit decision about one element.
@@ -238,7 +310,7 @@ The class an element can be given, and what `RDP::drawRect` emits for it:
 |---|---|
 | `center` | Nothing; RT64's default centring stands. |
 | `left` / `right` | `G_EX_ORIGIN_LEFT` / `_RIGHT` on **both** edges (a translation, not a stretch), plus the widened scissor that has to travel with it. |
-| `stretch` | `rectAspect = G_EX_ASPECT_STRETCH`, origins left `G_EX_ORIGIN_NONE`. Means "do not squeeze this to 4:3" — a 320-wide rectangle reaches the frame's full width and a narrower one is widened about its centre by the same factor. It does **not** pin an element's edges to the frame's; that is what the origins do. |
+| `stretch` | `rectAspect = G_EX_ASPECT_STRETCH`, origins left `G_EX_ORIGIN_NONE`, **plus the widened scissor**. Means "do not squeeze this to 4:3" — a 320-wide rectangle reaches the frame's full width and a narrower one is widened about its centre by the same factor. It does **not** pin an element's edges to the frame's; that is what the origins do. The scissor has to travel with it for the same reason it travels with `left` and `right`: BAR scissors its 2D to the whole 320×240 screen, which converts to the centred 4:3 region, so a widened rectangle without a widened scissor is clipped straight back and looks exactly like the tag never applied. `wave-race-64-recomp` does not need this for its own stretch class. |
 | `spill` | Placement untouched; only the scissor is widened, for that one draw. The only class about clipping rather than placement — for an element that is the right size in the right place and is merely cut off where the 4:3 frame used to end. BAR scissors a race to `x 8..311`, so an element drawn from `x 0` has eight units hidden even on hardware. |
 
 `stretch` and `spill` are new with the inspector and have no built-in users yet: nothing in

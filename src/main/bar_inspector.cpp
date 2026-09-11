@@ -27,7 +27,7 @@
 extern "C" {
     extern void (*RT64_PortInspectorHook)();
     extern void (*RT64_BarHudNoteElement)(const char *identity, const char *secondIdentity,
-        float minX, float maxX, float minY, float maxY, int givenClass, int isRect);
+        float minX, float maxX, float minY, float maxY, int givenClass, const char *kind);
     extern void (*RT64_BarHudEndFrame)();
     extern int (*RT64_BarHudTagLookup)(const char *identity, const char *secondIdentity, int *outClass);
 }
@@ -43,7 +43,7 @@ struct Element {
     std::string identity;
     std::string second_identity;
     float min_x = 0.0f, max_x = 0.0f, min_y = 0.0f, max_y = 0.0f;
-    bool is_rect = true;
+    std::string kind;            // "tex", "fill" or "untex" -- which identity scheme this row got
     int given_class = kCenter;
 };
 
@@ -82,13 +82,14 @@ const char* class_name(int cls) {
         case kRight:   return "right";
         case kStretch: return "stretch";
         case kSpill:   return "spill";
+        case kCover:   return "cover";
         default:       return "center";
     }
 }
 
 // The lists hud.json is made of, indexed by Class. Kept as one array so the file format and the
 // dropdown cannot drift apart: adding a class means adding it here and in the enum, and nowhere else.
-const char* const kClassNames[] = { "center", "left", "right", "stretch", "spill" };
+const char* const kClassNames[] = { "center", "left", "right", "stretch", "spill", "cover" };
 constexpr int kClassCount = int(sizeof(kClassNames) / sizeof(kClassNames[0]));
 
 std::filesystem::path tag_path() {
@@ -285,10 +286,11 @@ void draw_panel() {
 
     const ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                   ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp;
-    if (ImGui::BeginTable("elements", 5, flags, ImVec2(0.0f, 0.0f))) {
+    if (ImGui::BeginTable("elements", 6, flags, ImVec2(0.0f, 0.0f))) {
         ImGui::TableSetupScrollFreeze(0, 1);
         ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 28.0f);
         ImGui::TableSetupColumn("identity", ImGuiTableColumnFlags_WidthStretch, 2.0f);
+        ImGui::TableSetupColumn("kind", ImGuiTableColumnFlags_WidthFixed, 48.0f);
         ImGui::TableSetupColumn("x", ImGuiTableColumnFlags_WidthFixed, 86.0f);
         ImGui::TableSetupColumn("y", ImGuiTableColumnFlags_WidthFixed, 86.0f);
         ImGui::TableSetupColumn("class", ImGuiTableColumnFlags_WidthFixed, 118.0f);
@@ -300,10 +302,16 @@ void draw_panel() {
 
         for (size_t i = 0; i < frame.elements.size(); ++i) {
             const Element& e = frame.elements[i];
-            if (filter[0] != '\0' &&
-                e.identity.find(filter) == std::string::npos &&
-                e.second_identity.find(filter) == std::string::npos) {
-                continue;
+            if (filter[0] != '\0') {
+                char extent[48];
+                std::snprintf(extent, sizeof(extent), "%.0f..%.0f %.0f..%.0f",
+                              e.min_x, e.max_x, e.min_y, e.max_y);
+                if (e.identity.find(filter) == std::string::npos &&
+                    e.second_identity.find(filter) == std::string::npos &&
+                    e.kind.find(filter) == std::string::npos &&
+                    std::strstr(extent, filter) == nullptr) {
+                    continue;
+                }
             }
             ImGui::TableNextRow();
             ImGui::PushID(static_cast<int>(i));
@@ -335,6 +343,12 @@ void draw_panel() {
 
             ImGui::TableNextColumn();
             ImGui::Text("%s  %s", e.identity.c_str(), e.second_identity.c_str());
+
+            // Which identity scheme the row got, because two rows can otherwise look alike and
+            // behave completely differently. An "untex" row is identified by its display list, and
+            // its texture address is deliberately not offered -- it belongs to another element.
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(e.kind.c_str());
 
             ImGui::TableNextColumn();
             ImGui::Text("%.0f..%.0f", e.min_x, e.max_x);
@@ -392,7 +406,7 @@ void draw_panel() {
 
 void note_element(const char* identity, const char* second_identity,
                   float min_x, float max_x, float min_y, float max_y,
-                  int given_class, int is_rect) {
+                  int given_class, const char* kind) {
     // A frame of a busy menu is a few dozen elements; the cap is only so that a pathological list
     // cannot grow without bound behind the panel's back.
     if (g_building.elements.size() >= 512) return;
@@ -404,7 +418,7 @@ void note_element(const char* identity, const char* second_identity,
     e.min_y = min_y;
     e.max_y = max_y;
     e.given_class = given_class;
-    e.is_rect = is_rect != 0;
+    e.kind = kind != nullptr ? kind : "";
     g_building.elements.push_back(std::move(e));
 }
 

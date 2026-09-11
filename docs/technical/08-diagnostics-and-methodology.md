@@ -143,6 +143,7 @@ virtualised 1536×864 view of a 1920×1080 window and produces an image that loo
 | `BAR_AUDIO_DBG=1` | Peak sample magnitude and saturation count |
 | `BAR_AUDIO_CAPTURE=<path>` | Dump the raw untransformed received audio stream (~16 MB cap) for offline analysis with no device open |
 | `BAR_HUD_TRACE=1` | Game state, race flag, whether anchoring is armed, and every 2D rectangle with the identity and class it was given. **Prefer the HUD inspector** (F1) — see below |
+| `BAR_HUD_COVER_INSET="l,t,r,b"` | The overscan-safe rectangle the `cover` class magnifies to the frame's edges; default `22,17,296,223`. Dial a backdrop in without a rebuild |
 | `BAR_INSPECTOR=0` | Turns the port's half of the F1 debug menu off, for an A/B against the fork's own classification. RT64's half stays on F1 either way, and `hud.json` tags still apply |
 | `BAR_DBG_RECT=1` *(RT64 fork)* | Every **distinct** 2D rectangle in framebuffer pixels, with cycle type, texturing, fill colour, scissor and framebuffer width |
 | `BAR_DBG_PROJ=1` *(RT64 fork)* | Every projection with its type (1 perspective / 2 orthographic / 3 rectangle), width, and whether the widescreen adjustment applied |
