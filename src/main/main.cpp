@@ -40,6 +40,7 @@
 #include "game/input_config.hpp"              // bar::input_config — 4-port controller settings (input.json)
 #include "main/bar_cheats.h"                  // bar_cheats — BAR cheat toggles (host-side RDRAM pokes)
 #include "main/bar_input.hpp"                 // bar::input — live 4-port runtime input path
+#include "main/bar_rumble.hpp"                // bar::rumble — the pulsed Rumble Pak motor model
 #include "main/bar_inspector.h"                // bar::inspector — the F1 HUD debug menu + hud.json
 #ifdef BEETLE_ENABLE_FRONTEND
 #include "frontend/bar_frontend.h"            // bar::frontend — RecompFrontend launcher/menus + input
@@ -392,6 +393,13 @@ static void update_gfx(ultramodern::gfx_callbacks_t::gfx_data_t /*data*/) {
     // now go to recompinput's pump.
     bar::input::sample_all_ports();   // refresh every assigned pad's snapshot on this (main) thread
     bar::input::flush_rumble();       // issue SDL rumble for any port that wants it (main thread)
+    // The motor model's output goes to pads only in the frontend build; here it runs for
+    // BAR_RUMBLE_TRACE alone, so a scripted race can measure the duty the game produces.
+    if (std::getenv("BAR_RUMBLE_TRACE") != nullptr) {
+        uint16_t strength[bar::rumble::kPorts];
+        bool send[bar::rumble::kPorts];
+        bar::rumble::step(100.0, false, strength, send);
+    }
 #endif
     // Shared by BOTH builds, and it must keep running in each: without it, Controller Pak writes --
     // BAR's records, ghosts and settings -- would never reach disk.
@@ -462,6 +470,12 @@ extern "C" void bar_set_audio_volume(double percent) {
 
 extern "C" void bar_set_mute_when_unfocused(bool mute) {
     g_mute_unfocused.store(mute, std::memory_order_relaxed);
+}
+
+// Whether Mute When Not In Focus is silencing the game right now. The frontend's rumble uses it too:
+// alt-tabbed away with the setting on, the motor stops as well (as in Body Harvest's port).
+extern "C" bool bar_output_silenced(void) {
+    return !g_window_focused.load(std::memory_order_relaxed) && g_mute_unfocused.load(std::memory_order_relaxed);
 }
 
 static bool bar_audio_play_enabled() {
@@ -623,12 +637,26 @@ static bool input_get(int controller_num, uint16_t* buttons, float* x, float* y)
     return true;
 }
 
+// Both routes to the motor land here: ultramodern's set_rumble callback, and -- the one BAR actually
+// uses -- the joybus motor register served in os_unimpl_stubs.cpp (bar_handle_pak, block 0x600).
+// That handler used to call bar::input::set_rumble directly, which only the headless build reads, so
+// in the frontend build the game's motor writes never reached a pad at all.
+extern "C" void bar_pak_motor(int controller_num, bool rumble);
 static void input_set_rumble(int controller_num, bool rumble) {
+    bar_pak_motor(controller_num, rumble);
+}
+
+extern "C" void bar_pak_motor(int controller_num, bool rumble) {
+    // Every motor write feeds the host motor model (src/main/bar_rumble.cpp): BAR pulses the motor to
+    // set its strength, so what reaches the pad is the duty cycle, not this bool.
+    bar::rumble::motor(controller_num, rumble);
 #ifdef BEETLE_ENABLE_FRONTEND
     // recompinput owns the motor with the frontend on: it scales the request by the General tab's
     // Rumble Strength and ramps it, which bar::input cannot do because it never opened the pad --
     // the SDL hotplug events that would have told it go to recompinput's pump instead.
-    bar::frontend::set_port_rumble(controller_num, rumble);
+    if (bar::rumble::raw_mode()) {
+        bar::frontend::set_port_rumble(controller_num, rumble);   // BAR_RUMBLE_RAW=1: recompinput's on/off path
+    }
 #else
     bar::input::set_rumble(controller_num, rumble);
 #endif

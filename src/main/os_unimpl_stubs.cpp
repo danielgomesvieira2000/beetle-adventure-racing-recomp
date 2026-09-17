@@ -27,6 +27,8 @@
 
 // Per-port input resolution lives in main.cpp / bar_input (they own the Win32 window / focus + SDL).
 extern "C" uint16_t bar_poll_keyboard(int port, int8_t* stick_x, int8_t* stick_y);
+// A motor start/stop written to a port's Rumble Pak (main.cpp): feeds the motor model and the build's rumble sink.
+extern "C" void bar_pak_motor(int port, bool on);
 
 // R6 diagnostic (env-gated BAR_DBG_SLIDE): trace the menu page-transition slide. Called from the
 // recompiled transition-start (func_selection_00402E98) and slide-draw (func_selection_00418800) to
@@ -142,6 +144,42 @@ bool bar_dbg_pak() {
     static const bool on = std::getenv("BAR_DBG_PAK") != nullptr;
     return on;
 }
+
+// What a Rumble Pak's identify register reads as.
+constexpr uint8_t kRumbleIdentify = 0x80;
+}
+
+// BAR_NO_RUMBLE_PAK=1: the pre-rumble behaviour, for A/B -- the identify register is a plain echo
+// again, and scripts/fix-recompiled.sh rule (I) leaves the game's accessory classifier unpatched.
+// Exported because that rule's injected C calls it too.
+extern "C" int bar_rumble_pak_enabled(void) {
+    static const bool on = [] {
+        const char* v = std::getenv("BAR_NO_RUMBLE_PAK");
+        return v == nullptr || *v == '\0' || *v == '0';
+    }();
+    return on ? 1 : 0;
+}
+
+// BAR_DBG_PAK diagnostic for rule (I): the uvcont classifier reports where its port-0 accessory record
+// and OSPfs live (overlay addresses are only known to the recompiled code), and the SI path below
+// logs the flags byte, pfs->status and pfs->activebank whenever one of them changes.
+static int32_t g_dbg_rec0 = 0;
+static int32_t g_dbg_pfs0 = 0;
+extern "C" void bar_rumble_dbg_addrs(int32_t rec0, int32_t pfs0) {
+    g_dbg_rec0 = rec0;
+    g_dbg_pfs0 = pfs0;
+}
+static void bar_rumble_dbg_state(uint8_t* rdram, const char* where) {
+    if (!bar_dbg_pak() || g_dbg_rec0 == 0) return;
+    static int last_flags = -1, last_status = -1, last_bank = -1;
+    const int flags  = (int)(uint8_t)MEM_BU(0x16, (int64_t)g_dbg_rec0);
+    const int status = (int)MEM_W(0x0, (int64_t)g_dbg_pfs0);
+    const int bank   = (int)(uint8_t)MEM_BU(0x65, (int64_t)g_dbg_pfs0);
+    if (flags != last_flags || status != last_status || bank != last_bank) {
+        std::fprintf(stderr, "[BAR_DBG_PAK] state(%s) flags=0x%02X pfs.status=0x%X pfs.activebank=0x%02X\n",
+                     where, flags, status, bank);
+        last_flags = flags; last_status = status; last_bank = bank;
+    }
 }
 
 // Handle a single READ_PAK/WRITE_PAK block for `port` at PIF format base `fb` (sign-extended). Uses the
@@ -165,23 +203,35 @@ static void bar_handle_pak(uint8_t* rdram, int64_t fb, int port, unsigned cmd) {
     // not actually collide in the address space:
     //
     //   block <  0x400 (addr < 0x8000)  Controller Pak data   -> 32 KiB per-port save store
-    //   block == 0x400 (addr   0x8000)  bank-select / identify -> RAM echo, which satisfies BOTH
-    //                                    (BAR writes a bank number and reads it back; a Rumble Pak
-    //                                     identify writes 0x80 and reads 0x80 back)
+    //   block == 0x400 (addr   0x8000)  bank-select / identify -> see below
     //   block == 0x600 (addr   0xC000)  rumble motor on/off    -> host rumble
     //
     // So a single port can present a working Controller Pak and a working Rumble Pak at once, with
-    // no manual switching. Deliberate deviation from hardware; the identify semantics are left
-    // exactly as the save path already proved, so this changes policy only.
+    // no manual switching. Deliberate deviation from hardware.
+    //
+    // The identify register is where the two collide, and a plain echo is NOT enough. BAR's
+    // osMotorInit (func_8000EA94) selects bank 0xFE and returns PFS_ERR_DEVICE if 0xFE reads back,
+    // then selects 0x80 and requires 0x80. As in Hybrid Heaven (its src/si_pak.cpp): remember what
+    // was written, but read 0x80 whenever the last byte written is >= 0x80, which is how a Rumble
+    // Pak's identify register behaves. The Controller Pak's bank select writes small bank numbers,
+    // which still echo, and a Transfer Pak probe (0xFE, then 0x84 must read back) still fails.
+    //
+    // This alone changes nothing in BAR: the game's accessory classifier skips the motor probe on a
+    // port that already holds a Controller Pak. scripts/fix-recompiled.sh rule (I) patches that.
     if (block == kBlockDetect) {
-        if (is_write) std::memcpy(g_detect_cell[port], data, 32);
-        else          std::memcpy(data, g_detect_cell[port], 32);
+        if (is_write) {
+            std::memcpy(g_detect_cell[port], data, 32);
+        } else {
+            std::memcpy(data, g_detect_cell[port], 32);
+            if (bar_rumble_pak_enabled() && g_detect_cell[port][31] >= kRumbleIdentify)
+                std::memset(data, kRumbleIdentify, 32);
+        }
     } else if (block < kBlockDetect) {
         if (is_write) bar::input::mempak_write(port, block, data);
         else          bar::input::mempak_read(port, block, data);
-    } else if (block == kBlockRumble) {
+    } else if (block == kBlockRumble && bar_rumble_pak_enabled()) {
         if (is_write) {
-            bar::input::set_rumble(port, data[0] != 0);
+            bar_pak_motor(port, data[0] != 0);   // main.cpp: motor model, then the build's own sink
             if (bar_dbg_pak())
                 std::fprintf(stderr, "[BAR_DBG_PAK] *** RUMBLE motor write port=%d value=0x%02X ***\n",
                              port, data[0]);
@@ -229,6 +279,7 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
     // the real PIF RAM but a garbage high half) -> MEM_BU faults reading it. Only touch the buffer when
     // a1 is a sane RDRAM (KSEG0, 8 MiB) address; otherwise just post the SI event so we never AV.
     const bool valid_pifram = ((pifram - 0x80000000u) < 0x00800000u);
+    bar_rumble_dbg_state(rdram, direction == 0 ? "si-read" : "si-write");
 
     // TEMPORARY (BAR_DBG_PAK=1): dump every DISTINCT SI frame shape, both directions, before any
     // classification. The pak-frame classifier below may simply be failing to recognise BAR's pak

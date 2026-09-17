@@ -289,14 +289,94 @@ Address decoding, by 32-byte block:
 | Block | Address | Meaning | Served by |
 |---|---|---|---|
 | `< 0x400` | `< 0x8000` | Controller Pak data | The 32 KiB per-port save store (`mempak_pN.pak`) |
-| `0x400` | `0x8000` | Bank select / identify | A per-port RAM echo cell |
-| `0x600` | `0xC000` | Rumble motor on/off | Host rumble |
+| `0x400` | `0x8000` | Bank select / identify | A per-port cell: echoes what was written, but reads `0x80` after a byte `≥ 0x80` |
+| `0x600` | `0xC000` | Rumble motor on/off | Host rumble (`set_rumble`) |
 
-**One port presents both accessories at once**, which is a deliberate deviation from hardware — the
-real slot holds one accessory and BAR even prompts the player to swap. They do not collide in the
-address space, and the bank-select echo satisfies both (BAR writes a bank number and reads it back;
-a Rumble Pak identify writes `0x80` and reads `0x80` back), so serving both from the same stream is
-safe and removes the swap prompt as a practical concern.
+A write marks the save dirty only when its bytes differ from what is stored (`mempak_write`).
+
+### One slot, both accessories
+
+**One port presents both accessories at once**, a deliberate deviation from hardware: the real slot
+holds one accessory. The same design as Hybrid Heaven's port (its `src/si_pak.cpp` and
+`docs/findings/phase-05.md`), but BAR needed three layers where Hybrid Heaven needed two, all
+switched off together by `BAR_NO_RUMBLE_PAK=1`.
+
+**Correction to earlier versions of this chapter**, which said the plain bank-select echo satisfied
+both accessories. It never did: until 2026-09-17 **rumble never ran in this port**. Three traced runs
+to a race (`BAR_DBG_PAK=1`) contained no identify probe and no motor write at all.
+
+**Layer 1: the identify register.** BAR's `osMotorInit` is `func_8000EA94` (the J-style probe: select
+bank `0xFE`, return `PFS_ERR_DEVICE` = `0xB` if `0xFE` reads back, then select `0x80` and require
+`0x80`). A plain echo fails that probe. The cell now reads `0x80` whenever the last byte written is
+`≥ 0x80`, which is how a Rumble Pak's identify register behaves. The Controller Pak's bank select
+writes small numbers, which still echo, and a Transfer Pak probe (`0xFE`, then `0x84` must read back)
+still fails. (N64Recomp does not replace `osMotor*` here: no recompiled function calls
+`osMotor*_recomp`, so the game's own libultra runs, and `input_get_device_info`'s `Pak` value
+matters only for the status bit. An intermediate attempt that reported `Pak::RumblePak` there
+changed nothing and was reverted.)
+
+**Layer 2: the game's classifier skips the probe.** The `uvcont` overlay keeps one flags byte per
+port, at `0x858018B6 + port*0x18` (the `+0x16` field of a 24-byte record at `0x858018A0`). Its
+readers test it with masks:
+
+| Bit | Meaning (inferred from its readers) | Read by |
+|---|---|---|
+| `0x1` | Controller Pak | `func_uvcont_rom_00400D5C` (save path), `00400C90` |
+| `0x2` | Rumble Pak | `004015D8`, `00401520` (motor start/stop), `00401658` (re-init) |
+| `0x4` | other device | written by the classifiers |
+| `0x8` | error (set when a motor access fails) | all of the above bail on it |
+
+`func_uvcont_rom_00401760` runs `osMotorInit` **only when bit 0 is clear**, and on success *assigns*
+`2`. So with a Controller Pak inserted the motor was never probed, whatever the SI answered. The
+flow: the per-frame state machine (`func_uvcont_rom_004002D8`) calls `0040128C` (the `osPfsInitPak`
+classifier) then `00401760` when the controller status changes, and each frame drives the motor
+paths for ports with bit `0x2`. The Rumble Pak screen ("If Rumble Paks are to be used, please insert
+them into the Controllers now.") only waits for A/Start. Rule I lets the probe run, and on success
+writes `1 | 2` instead of `2`.
+
+**Layer 3: `osPfsInitPak` and `osMotorInit` share one `OSPfs`.** Both are handed
+`0x85801918 + port*0x68`, and `osMotorInit` assigns `pfs->status = PFS_MOTOR_INITIALIZED` (8),
+erasing `PFS_INITIALIZED` (1). On hardware only one of them can succeed, so it never matters. Here,
+every later Pfs call failed. Measured:
+
+| Build | Boot menu | `pfs->status` after the probe |
+|---|---|---|
+| Layers 1+2 only | loops "Controller Pak detected / Create New Game" ↔ "Creating game note", 2,310 probes; the existing note is never loaded | `0x8` |
+| + status repair in `00401760` | "Loading game data" appears, then the same loop, 330 probes | `0x9`, then `0x8` again |
+| + status repair in `00401658` | normal: loads the save, logos, Rumble Pak screen, race | `0x9` every time |
+
+The second repair is needed because `func_uvcont_rom_00401658` (run while bit `0x2` is set) repeats
+`osPfsInitPak` then `osMotorInit` on the same struct. The `BAR_DBG_PAK` state log (flags byte,
+`pfs->status`, `pfs->activebank` on every change) is what found it.
+
+**Verified (2026-09-17, `build-cmake`, scripted runs):**
+
+* With the existing save: loads it, reaches Coventry Cove, 120 motor starts and 8,999 stops during
+  a race with collisions. The save file is byte-identical afterwards.
+* With a blank pak: "Controller Pak detected" → Create New Game → "Game note successfully created"
+  → logos → intro.
+* `BAR_NO_RUMBLE_PAK=1`: no probe and no motor writes; loads the save and reaches the race as before.
+
+**Playtests (2026-09-17, `build-frontend`):**
+
+* **First:** saving and loading worked, but **no rumble was felt**. Two faults explained it:
+  * **The motor writes went nowhere.** `bar_handle_pak` handed them to `bar::input::set_rumble`,
+    which only the headless build reads, so in the frontend build they never reached recompinput.
+  * **BAR pulses the motor.** Its 120 starts in the race trace are each a single write followed by
+    stops, mostly `1000` (one on, three off), sometimes `100` or `10`, so strength is set by duty
+    cycle. recompinput samples the on/off bool once per frame, which mostly lands on "off". This is
+    the Body Harvest pattern (framework playbook 07, "Game pulses the motor to set strength").
+  * Both are fixed by the motor model below.
+* **Second, with the motor model: rumble felt.**
+
+**Still open:**
+
+* Saving a record after a race.
+* The re-init cost. The classifier and `osPfsInitPak` now re-run repeatedly: 167 cycles in a
+  ~170 s race run, 812 probes in a 70 s boot-and-intro run. Pak traffic goes from 64 writes and
+  210 reads to 2,672 and 7,219 in the same race script. The writes are identical bytes (no file
+  rewrite since the dirty-on-change fix), but it is extra SI work on the game thread, so check the
+  intro speed. *Why* it re-runs that often is not measured.
 
 **Controller Pak support needs two independent halves, and neither works alone** — verified by
 reverting each:
@@ -312,6 +392,25 @@ reverting each:
 
 `BAR_DBG_PAK=1` traces every pak transaction and every distinct SI frame shape in both directions.
 It is what diagnosed both halves and is worth keeping.
+
+### The motor model (`src/main/bar_rumble.cpp`)
+
+Body Harvest's model with its constants unchanged, one instance per port. Every motor write, whether
+from the joybus motor register or from ultramodern's `set_rumble` callback, goes through
+`bar_pak_motor` (`main.cpp`) into `bar::rumble::motor`. Once per frame, `pump_events()` works out
+each port's on-fraction since the last frame (the duty), low-passes it (40 ms up, 80 ms down),
+multiplies by General → Rumble Strength, and sends the result to both motors of that player's own pad
+(`recompinput::players::get_player(port).controller`). Values below `0x0400` become 0. A new value is
+sent when it changes by `0x0800` or more, and a held level is re-sent every 100 ms with a 250 ms
+duration. With Mute When Not In Focus on, alt-tabbing away stops the motor too.
+`recompinput::update_rumble` is no longer called.
+
+Measured (`BAR_RUMBLE_TRACE=1`, `build-cmake`, where the model runs for the trace only, in the same
+scripted Coventry Cove race): port 0 gets 35–68 motor writes a second, mean duty per second
+0.00–0.32, peak level 0.43–0.90, strength sent up to `0x91FE` at a 100 % slider. **Felt on a real pad in Daniel's playtest (2026-09-17).**
+
+Switches: `BAR_RUMBLE_RAW=1` goes back to recompinput's on/off path. `BAR_RUMBLE_TRACE=1` logs one
+line a second per active port.
 
 ## Presentation and the render context
 

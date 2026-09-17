@@ -231,6 +231,69 @@ require "$(count_in_funcs 'bar_frustum_adjust')" 2 \
 require "$(count_in_funcs 'bar_frustum_adjust(rdram, (unsigned)ctx->r4')" 1 \
     "frustum hook call is live (not collapsed into its comment)" "bar_frustum_adjust(rdram, ..."
 
+# (I) Rumble Pak on the Controller Pak's slot. The uvcont overlay keeps one accessory flags byte per
+# port (0x858018B6 + port*24): bit 0 Controller Pak (the save path tests it), bit 1 Rumble Pak (motor
+# start/stop test it), bit 3 error. Its classifier, func_uvcont_rom_00401760, runs osMotorInit
+# (func_8000EA94) ONLY when bit 0 is clear, and a successful probe ASSIGNS 2, which would drop bit 0.
+# On hardware one slot holds one accessory, so that is correct; this port serves both
+# (src/main/os_unimpl_stubs.cpp, bar_handle_pak). Two edits, both gated on bar_rumble_pak_enabled()
+# so BAR_NO_RUMBLE_PAK=1 is exactly the unpatched game:
+#   0x85801794  beq $t9,$zero -> skip the probe for a healthy Controller Pak: no longer taken.
+#   0x85801800  sb  $t2(=2),0x16($v1) on probe success: keep bit 0, i.e. (old & 1) | 2.
+# The sb is emitted twice (its branch delay slot); both copies are rewritten.
+# The second edit also repairs the OSPfs. The classifier hands osPfsInitPak and osMotorInit the SAME
+# struct (0x85801918 + port*0x68), and osMotorInit assigns pfs->status = PFS_MOTOR_INITIALIZED (8),
+# erasing PFS_INITIALIZED (1): every later Pfs call then fails, the game cannot find or create its
+# note, and the boot menu loops "Controller Pak detected" / "Creating game note" (measured). So when
+# the port holds a Controller Pak, bit 0 of pfs->status is put back beside the motor bit.
+rumble_flag_fix='    /* BAR FIX: rumble flag keeps the Controller Pak bit (rule I) */\n    if (bar_rumble_pak_enabled() && (MEM_BU(0X16, ctx->r3) & 0X1)) { /* osMotorInit shared the Controller Pak OSPfs: restore PFS_INITIALIZED */\n        int32_t bar_rec0 = ADD32(S32(RELOC_HI16(251, 0X18A0) << 16), (int16_t)RELOC_LO16(251, 0X18A0)); /* per-port records, 0x18 each */\n        int32_t bar_pfs0 = ADD32(S32(RELOC_HI16(251, 0X1918) << 16), (int16_t)RELOC_LO16(251, 0X1918)); /* per-port OSPfs, 0x68 each */\n        int32_t bar_port = ((int32_t)ctx->r3 - bar_rec0) / 0x18; /* $v1 is this port record */\n        MEM_W(0X0, (int32_t)(bar_pfs0 + bar_port * 0x68)) = MEM_W(0X0, (int32_t)(bar_pfs0 + bar_port * 0x68)) | 0X1; /* status |= PFS_INITIALIZED */\n        MEM_B(0X16, ctx->r3) = (int8_t)(0X1 | ctx->r10); /* flags: Controller Pak + Rumble Pak */\n    } else {\n        MEM_B(0X16, ctx->r3) = ctx->r10; /* unpatched assignment */\n    }'
+for f in "$RF"/*.c; do
+    if grep -q '0x85801794: beq         \$t9, \$zero, L_8580182C' "$f" && ! grep -q 'BAR FIX: rumble probe' "$f"; then
+        awk -v fix="$rumble_flag_fix" '
+            /^RECOMP_FUNC void func_uvcont_rom_00401760\(/ { print "extern int bar_rumble_pak_enabled(void);  // BAR FIX: rumble probe on the Controller Pak slot (scripts/fix-recompiled.sh rule I)" }
+            prev ~ /0x85801794: beq/ && $0 ~ /^[[:space:]]*if \(ctx->r25 == 0\) \{[[:space:]]*$/ {
+                print "    if (ctx->r25 == 0 && !bar_rumble_pak_enabled()) {  // BAR FIX: rumble probe also runs beside a Controller Pak"; prev = $0; next }
+            prev ~ /0x85801800: sb/ && $0 ~ /^[[:space:]]*MEM_B\(0X16, ctx->r3\) = ctx->r10;[[:space:]]*$/ {
+                print fix; prev = $0; next }
+            { print; prev = $0 }
+        ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+    fi
+done
+require "$(count_in_funcs 'BAR FIX: rumble probe also runs')" 1 \
+    "rumble probe beside a Controller Pak" "func_uvcont_rom_00401760: 0x85801794: beq -> if (ctx->r25 == 0) {"
+require "$(count_in_funcs 'BAR FIX: rumble flag keeps')" 2 \
+    "rumble flag keeps the Controller Pak bit" "func_uvcont_rom_00401760: 0x85801800: sb -> MEM_B(0X16, ctx->r3) = ctx->r10;"
+# Rule (I), second site. func_uvcont_rom_00401658 runs whenever the Rumble Pak bit is set (it re-inits
+# the accessory: osPfsInitPak func_8000F810, then osMotorInit, then four motor stops) on the same
+# shared OSPfs ($s0), and leaves pfs->status = 8 again. BAR_DBG_PAK's state log measured it:
+# status 0x9 after the classifier, then 0x8 after this function, then the boot menu re-detects the
+# pak and loops. Put PFS_INITIALIZED back right after its osMotorInit returns (label after_1).
+rumble_reinit_fix='    extern int bar_rumble_pak_enabled(void); /* BAR FIX: rumble re-init keeps the Controller Pak OSPfs (rule I) */
+    if (bar_rumble_pak_enabled()) {\n        int32_t bar_rec0 = ADD32(S32(RELOC_HI16(251, 0X18A0) << 16), (int16_t)RELOC_LO16(251, 0X18A0)); /* per-port records, 0x18 each */\n        int32_t bar_pfs0 = ADD32(S32(RELOC_HI16(251, 0X1918) << 16), (int16_t)RELOC_LO16(251, 0X1918)); /* per-port OSPfs, 0x68 each */\n        int32_t bar_port = ((int32_t)ctx->r16 - bar_pfs0) / 0x68; /* $s0 is this port OSPfs */\n        if (MEM_BU(0X16, (int32_t)(bar_rec0 + bar_port * 0x18)) & 0X1) { /* the port holds a Controller Pak */\n            MEM_W(0X0, ctx->r16) = MEM_W(0X0, ctx->r16) | 0X1; /* reinit status |= PFS_INITIALIZED */\n        }\n    }'
+for f in "$RF"/*.c; do
+    if grep -q 'RECOMP_FUNC void func_uvcont_rom_00401658(' "$f" && ! grep -q 'BAR FIX: rumble re-init keeps' "$f"; then
+        awk -v fix="$rumble_reinit_fix" '
+            { print }
+            /^RECOMP_FUNC void func_uvcont_rom_00401658\(/ { armed = 1; next }
+            armed && /^[[:space:]]*after_1:[[:space:]]*$/ { print fix; armed = 0 }
+        ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+    fi
+done
+require "$(count_in_funcs 'reinit status |= PFS_INITIALIZED')" 1 \
+    "rumble re-init keeps the Controller Pak OSPfs" "func_uvcont_rom_00401658: label after_1 (after jal 0x8000EA94)"
+
+# Rule (I) diagnostic: hand the port-0 record and OSPfs addresses to BAR_DBG_PAK's state logger.
+rumble_dbg='    { extern void bar_rumble_dbg_addrs(int32_t, int32_t); /* BAR DIAG: rumble state addresses (rule I) */\n      bar_rumble_dbg_addrs(ADD32(S32(RELOC_HI16(251, 0X18A0) << 16), (int16_t)RELOC_LO16(251, 0X18A0)), ADD32(S32(RELOC_HI16(251, 0X1918) << 16), (int16_t)RELOC_LO16(251, 0X1918))); }'
+for f in "$RF"/*.c; do
+    if grep -q 'BAR FIX: rumble probe also runs' "$f" && ! grep -q 'BAR DIAG: rumble state addresses' "$f"; then
+        awk -v fix="$rumble_dbg" '{ if ($0 ~ /BAR FIX: rumble probe also runs/) print fix; print }' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+    fi
+done
+require "$(count_in_funcs 'bar_rumble_dbg_addrs(ADD32')" 1 \
+    "rumble state diagnostic addresses" "line before 'BAR FIX: rumble probe also runs'"
+require "$(count_in_funcs 'status |= PFS_INITIALIZED')" 2 \
+    "rumble probe restores the Controller Pak OSPfs status (live, not inside a comment)" "rule I fix block"
+
 # ---------------------------------------------------------------------------------------------
 if [ "$FAILURES" -ne 0 ]; then
     echo "" >&2

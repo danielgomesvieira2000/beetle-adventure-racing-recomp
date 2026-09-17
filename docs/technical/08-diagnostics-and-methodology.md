@@ -134,7 +134,10 @@ virtualised 1536×864 view of a 1920×1080 window and produces an image that loo
 | `BAR_DBG_STATE=1` | `currentGameState` transitions (`gGameSettings + 0xA4`) |
 | `BAR_DBG_FPS=1` | The SI-poll rate, i.e. the game loop rate — the main loop polls once per iteration |
 | `BAR_DEBUG_OVERLAYS=1` | Every module load by 4-char nameTag and load address |
-| `BAR_DBG_PAK=1` | Controller Pak / joybus traffic, and every distinct SI frame shape both directions |
+| `BAR_DBG_PAK=1` | Controller Pak / joybus traffic, every distinct SI frame shape both directions, motor writes, and port 0's accessory flags byte / `pfs->status` / `pfs->activebank` on every change |
+| `BAR_RUMBLE_TRACE=1` | Once a second per active port: motor writes/s, mean duty, peak modelled level, last strength sent (`src/main/bar_rumble.cpp`). Works in `build-cmake` too, where the model runs for the trace only |
+| `BAR_RUMBLE_RAW=1` | Bypass the motor model and use recompinput's on/off rumble path (A/B) |
+| `BAR_NO_RUMBLE_PAK=1` | Serve the Controller Pak alone: plain identify echo, no motor, `fix-recompiled.sh` rule I inert. The A/B for anything that looks like a save or pak-prompt regression |
 | `BAR_DBG_UI=1` | Frontend diagnostics to `bar_ui_trace.log`. **Required** to see frontend faults at all: the release build is `/SUBSYSTEM:WINDOWS`, so stderr goes nowhere and shell redirection captures nothing |
 | `BAR_DBG_GFX=1` | What actually reached RT64's `userConfig` — widescreen depends on `aspectRatio == Expand` surviving, so print it rather than trusting the JSON |
 | `BAR_DBG_FRUSTUM=1` | Every perspective frustum built (destination, six parameters, aspect), and once, what the adjustment did |

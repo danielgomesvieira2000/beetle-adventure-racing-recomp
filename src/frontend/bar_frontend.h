@@ -54,9 +54,8 @@ bool port_assigned(int port);
 // and a centred stick for an unassigned port. Applies the player's own bindings.
 uint16_t poll_port(int port, int8_t* stick_x, int8_t* stick_y);
 
-// Ask this port's pad to rumble, or stop. recompinput owns the motor when the frontend is on: it
-// ramps towards the level the General tab's Rumble Strength asks for, and pump_events() is what
-// drives that ramp. Requesting it anywhere else means a slider at 30% still rumbles at full.
+// Ask recompinput to rumble this port's pad, or stop. Used only with BAR_RUMBLE_RAW=1: normally
+// pump_events() drives the pads from the motor model in src/main/bar_rumble.cpp.
 void set_port_rumble(int port, bool on);
 
 // Render-context factory for ultramodern's renderer_callbacks.create_render_context.

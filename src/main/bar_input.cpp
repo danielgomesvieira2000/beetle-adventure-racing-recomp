@@ -503,8 +503,14 @@ bool mempak_write(int port, int block, const uint8_t in[32]) {
     if (off + 32 > kMempakSize) return false;
     std::lock_guard<std::mutex> lk(g_mempak_mutex);
     mempak_ensure_loaded(port);
-    std::memcpy(&g_mempak[port][off], in, 32);
-    g_mempak_dirty[port] = true;
+    // Only a real change marks the pak dirty (as Hybrid Heaven's controller_pak.cpp does). With the
+    // Rumble Pak served on the same slot the game re-runs osPfsInitPak repeatedly (docs/technical/05), and its
+    // inode-backup repair rewrites identical bytes each time; without this the file was rewritten
+    // on every flush.
+    if (std::memcmp(&g_mempak[port][off], in, 32) != 0) {
+        std::memcpy(&g_mempak[port][off], in, 32);
+        g_mempak_dirty[port] = true;
+    }
     return true;
 }
 

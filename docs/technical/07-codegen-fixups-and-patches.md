@@ -145,6 +145,23 @@ That failure mode generalises: **a sentinel that can appear inside a comment is 
 The semantics of what the hook does are in
 [06 — The frustum BAR draws and culls against](06-graphics.md#the-frustum-bar-draws-and-culls-against).
 
+#### Rule I — Rumble Pak on the Controller Pak's slot
+
+Three edits in the `uvcont` overlay, all gated at run time on `bar_rumble_pak_enabled()`
+(`src/main/os_unimpl_stubs.cpp`), so `BAR_NO_RUMBLE_PAK=1` runs the unpatched game:
+
+| Site | Original | Patched |
+|---|---|---|
+| `func_uvcont_rom_00401760` `0x85801794` | `beq $t9,$zero` skips the motor probe on a port whose flags byte has the Controller Pak bit (and not the error bit) | branch not taken: the probe also runs beside a Controller Pak |
+| same function, `0x85801800` (emitted twice, delay slot) | `sb $t2(=2), 0x16($v1)` assigns "Rumble Pak" | on a Controller Pak port: flags = `1 \| 2`, and `pfs->status \|= PFS_INITIALIZED` |
+| `func_uvcont_rom_00401658`, label `after_1` (after `jal 0x8000EA94`) | — | on a Controller Pak port: `pfs->status \|= PFS_INITIALIZED` |
+
+Plus one diagnostic call (`bar_rumble_dbg_addrs`) that hands the port-0 record and `OSPfs` addresses
+to `BAR_DBG_PAK`'s state logger. Why each edit is needed, and what was measured, is in
+[05 — Controller Pak and Rumble Pak](05-runtime-host.md#controller-pak-and-rumble-pak). The two
+status repairs compute the port from the overlay's own `RELOC_HI16/LO16(251, …)` expressions,
+because the overlay's load address is only known to the generated code.
+
 ---
 
 ## Part 2 — MIPS patches

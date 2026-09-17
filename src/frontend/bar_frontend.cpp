@@ -1,4 +1,5 @@
 #include "frontend/bar_frontend.h"
+#include "main/bar_rumble.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -60,6 +61,7 @@ extern "C" void bar_set_draw_distance(float scale);
 // nothing upstream ever applies it -- the port is expected to, and this one did not.
 extern "C" void bar_set_audio_volume(double percent);
 extern "C" void bar_set_mute_when_unfocused(bool mute);
+extern "C" bool bar_output_silenced(void);
 
 // Draw Distance — a BAR-specific option appended to recompui's prefab Graphics tab.
 //
@@ -404,10 +406,26 @@ void bar::frontend::pump_events() {
 
     refresh_players();
 
-    // recompinput ramps the motor towards the level the General tab's Rumble Strength asks for, so
-    // this has to run every frame rather than only when a port changes its request. bar::input still
-    // decides WHICH ports want to rumble (main.cpp's input_set_rumble hands it over).
-    recompinput::update_rumble();
+    // Rumble. BAR pulses its motor to set the strength, so the port models the motor
+    // (src/main/bar_rumble.cpp) and sends each player's pad the resulting level, scaled by the General
+    // tab's Rumble Strength, on both of its motors. recompinput::update_rumble is not called on that
+    // path: it samples an on/off flag once per frame, which missed the pulses, and it would write its
+    // own strength over this one. BAR_RUMBLE_RAW=1 goes back to it (A/B).
+    if (bar::rumble::raw_mode()) {
+        recompinput::update_rumble();
+    } else {
+        uint16_t strength[bar::rumble::kPorts];
+        bool send[bar::rumble::kPorts];
+        bar::rumble::step(recompui::config::general::get_rumble_strength(), bar_output_silenced(), strength, send);
+        for (int port = 0; port < bar::rumble::kPorts && port < kMaxPlayers; port++) {
+            if (!send[port] || !recompinput::players::get_player_is_assigned(port)) continue;
+            SDL_GameController* pad = recompinput::players::get_player(port).controller;
+            if (pad != nullptr) {
+                SDL_GameControllerRumble(pad, strength[port], strength[port],
+                                         strength[port] != 0 ? bar::rumble::kSendDurationMs : 0);
+            }
+        }
+    }
 
     // Pick up Draw Distance as soon as the player applies it. See push_draw_distance().
     push_draw_distance();

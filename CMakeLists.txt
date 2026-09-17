@@ -184,6 +184,7 @@ add_executable(beetle-adventure-racing-recomp
     ${CMAKE_SOURCE_DIR}/src/main/bar_cheats.cpp          # BAR-specific cheats (host-side RDRAM pokes)
     ${CMAKE_SOURCE_DIR}/src/main/bar_preempt.cpp         # cooperative audio-thread preemption (no-underrun)
     ${CMAKE_SOURCE_DIR}/src/main/bar_crash.cpp           # symbolized crash backtrace (debug aid)
+    ${CMAKE_SOURCE_DIR}/src/main/bar_rumble.cpp          # the pulsed Rumble Pak motor, modelled per port (duty -> strength)
     ${CMAKE_SOURCE_DIR}/src/main/bar_input.cpp           # live 4-port runtime input path (device/keymap/rumble/pak)
     ${CMAKE_SOURCE_DIR}/src/main/bar_inspector.cpp       # HUD inspector: the F1 debug menu's port half + hud.json
     ${CMAKE_SOURCE_DIR}/src/game/config.cpp              # host-owned settings persistence + high-FPS enable
