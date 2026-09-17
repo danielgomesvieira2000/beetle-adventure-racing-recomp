@@ -125,15 +125,28 @@ Ruled out along the way, each by measurement: an unstable identity, a framebuffe
 (`tileCount=0`), depth (neither the other mode nor the geometry mode enables it), clipping to the
 framebuffer pair's scissor (constant, full 320x240), and the viewport path (inputs constant).
 
-**Open: pause-screen flicker at the bottom.** With Cover, on every other presented frame, a band at the
-bottom is not darkened while the pause camera orbits the car. `BAR_SHOT_BURST="6760:b:120"` (relative
-directory, because the spec is split on `:`) measured it at up to 68 of 1080 px, which is exactly the
-15 N64 px between the quad's bottom (225) and the screen's (240). The band is absent with the backdrop
-tagged Center, so on those presents the quad's bottom edge is not magnified. Its changing height is
-probably only how much the scene under that strip differs between frames (inference). Giving the
-interpolation's previous projection the same Cover factors did not change it, and was reverted. Lead:
-the layer's final viewport alternates between 638x478 and 4255x2390 from one present to the next, so
-two render paths draw it.
+**Pause-screen flicker at the bottom (fixed in RT64's framebuffer sizing, 17 Sep 2026).** With Cover,
+every other presented frame showed a band at the bottom that was not darkened while the pause camera
+orbited the car. `BAR_SHOT_BURST="6760:b:120"` measured it at up to 68 of 1080 px (the spec is split on
+`:`, so give a relative directory), and it was absent with the backdrop tagged Center.
+
+The cause was not the tag. Logging per present showed:
+* the projection is identical every present, with Cover applied and no interpolation (`rigid=0`),
+  which ruled out the interpolation hypothesis;
+* BAR alternates its two framebuffers (`0x00200000`, `0x001DA800`), and on the second one a separate
+  framebuffer pair holding the pause draws was sized **320x225 to 240**: RT64 sizes a pair's render
+  target to `drawColorRect.bottom()`, the lowest pixel any draw in that pair reached. That is the pause
+  quad's unmagnified bottom (225), or lower when the orbiting car reaches further.
+
+So the magnified backdrop was cut off by the target's own height. `WorkloadQueue` (`getTargetsFromPair`)
+now gives a pair whose draws already span at least 3/4 of the VI framebuffer, at its width, the full VI
+height. Only the render target grows; the `Framebuffer` objects keep the drawn height.
+`BAR_NO_FB_FULL_HEIGHT=1` turns it off.
+
+Verified: a 120-frame burst shows no band (0 of 118 frames, against 45 of 118 before); menus, course
+overview, race and pause look unchanged otherwise. One crash was seen in the first run with this change
+(a display list walked out of RDRAM, then `ProjectionProcessor::processScene`). It did not recur in 14
+further runs of the same script, 6 of them with the switch off; not attributed.
 
 A `dl:` identity is the next weakest: several draws can share one display list, so a tag on
 one may catch its neighbours. Check the outline before believing it, and if it over-matches, say so

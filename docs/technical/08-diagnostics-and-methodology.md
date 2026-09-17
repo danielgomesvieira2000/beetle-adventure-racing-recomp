@@ -96,7 +96,7 @@ the swapchain texture to a readback buffer and writing it with `stb_image_write`
 | Variable | Use |
 |---|---|
 | `BAR_SHOTS="frame:path frame:path …"` | Preferred. Captures at scripted input frames, on the **same** timeline as `BAR_AUTOPLAY`, so captures line up with input |
-| `BAR_SHOT_BURST="fc:dir:count"` | Captures the next `count` **presents** to `dir/f0000.png…`, one per present. `dir` must already exist |
+| `BAR_SHOT_BURST="fc:dir:count"` | Captures the next `count` **presents** to `dir/f0000.png…`, one per present. `dir` must already exist, and must not contain `:` (the spec is split on it, so `C:/…` fails) — use a directory relative to the working directory |
 | `BAR_BURST_ON_ROLL="dir:count"` | Deterministic burst trigger: fires when the film-roll animation loop is entered, robust to boot-timing variance |
 | `RT64_SHOT_TRIGGER=<file> RT64_SHOT_OUT=<png>` | Ad-hoc fallback: `touch` the trigger and the next present writes the PNG and deletes it |
 
@@ -137,6 +137,7 @@ virtualised 1536×864 view of a 1920×1080 window and produces an image that loo
 | `BAR_DBG_PAK=1` | Controller Pak / joybus traffic, every distinct SI frame shape both directions, motor writes, and port 0's accessory flags byte / `pfs->status` / `pfs->activebank` on every change |
 | `BAR_RUMBLE_TRACE=1` | Once a second per active port: motor writes/s, mean duty, peak modelled level, last strength sent (`src/main/bar_rumble.cpp`). Works in `build-cmake` too, where the model runs for the trace only |
 | `BAR_RUMBLE_RAW=1` | Bypass the motor model and use recompinput's on/off rumble path (A/B) |
+| `BAR_NO_FB_FULL_HEIGHT=1` | Size framebuffer render targets to the drawn extent again, instead of the full VI height for full-screen pairs (A/B for the pause-backdrop flicker fix, `docs/HUD-INSPECTOR.md`) |
 | `BAR_NO_RUMBLE_PAK=1` | Serve the Controller Pak alone: plain identify echo, no motor, `fix-recompiled.sh` rule I inert. The A/B for anything that looks like a save or pak-prompt regression |
 | `BAR_DBG_UI=1` | Frontend diagnostics to `bar_ui_trace.log`. **Required** to see frontend faults at all: the release build is `/SUBSYSTEM:WINDOWS`, so stderr goes nowhere and shell redirection captures nothing |
 | `BAR_DBG_GFX=1` | What actually reached RT64's `userConfig` — widescreen depends on `aspectRatio == Expand` surviving, so print it rather than trusting the JSON |

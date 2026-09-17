@@ -2,6 +2,7 @@
 // RT64
 //
 
+#include <cstdlib>
 #include "rt64_workload_queue.h"
 
 #include "common/rt64_thread.h"
@@ -425,6 +426,29 @@ namespace RT64 {
                     nativeColorWidth = colorImg.width;
                     nativeColorHeight = fbPair.drawColorRect.bottom(true);
 
+                    // BAR: the height is the lowest pixel any draw in this pair reached, which is too
+                    // little once a layer is magnified past what the game drew. The pause screen's pair
+                    // ends at y=225 (its backdrop quad's bottom, before Cover magnifies it), or lower when
+                    // the orbiting car reaches further, so the pair's target flipped between ~225 and 240
+                    // and the magnified backdrop was cut off at the bottom on those presents. A pair whose
+                    // draws already span most of the VI framebuffer is a full-screen composition; give it
+                    // the whole VI height. Small offscreen targets stay as they were.
+                    //
+                    // Only the render target grows. The Framebuffer objects below keep the drawn height:
+                    // they define the RDRAM range RT64 syncs and watches for this image, and this change
+                    // has no reason to touch that. (FramebufferManager keeps the largest height ever asked
+                    // for per address, and the scene pair asks for 240, so in BAR that range was already
+                    // full height -- this is caution, not a measured need.)
+                    const uint32_t drawnColorHeight = nativeColorHeight;
+                    // BAR_NO_FB_FULL_HEIGHT=1 turns this off (A/B).
+                    static const bool fullHeightEnabled = (std::getenv("BAR_NO_FB_FULL_HEIGHT") == nullptr);
+                    const uint32_t viHeight = workload.viFbSize[1];
+                    if (fullHeightEnabled && (viHeight > 0) && (nativeColorHeight < viHeight) && (nativeColorHeight >= (viHeight * 3) / 4) &&
+                        (colorImg.width == workload.viFbSize[0]))
+                    {
+                        nativeColorHeight = viHeight;
+                    }
+
                     // When the target is much bigger than the reference height, we reduce the resolution scaling (but clamped to 1.0).
                     const uint32_t heightThreshold = (workload.viFbSize[1] > 0) ? ((workload.viFbSize[1] * 3) / 2) : 360;
                     uint32_t downsampleMultiplier = workloadConfig.downsampleMultiplier;
@@ -435,7 +459,7 @@ namespace RT64 {
 
                     if (fbPair.depthRead || fbPair.depthWrite || fbPair.fastPaths.clearDepthOnly) {
                         uint32_t depthAddress = fbPair.fastPaths.clearDepthOnly ? colorImg.address : depthImg.address;
-                        depthFb = &fbManager.get(depthAddress, G_IM_SIZ_16b, nativeColorWidth, nativeColorHeight);
+                        depthFb = &fbManager.get(depthAddress, G_IM_SIZ_16b, nativeColorWidth, drawnColorHeight);
                         depthFb->everUsedAsDepth = true;
                     }
                     else {
@@ -446,7 +470,7 @@ namespace RT64 {
                     fbKey = RenderFramebufferKey();
 
                     if (!fbPair.fastPaths.clearDepthOnly) {
-                        colorFb = &fbManager.get(colorImg.address, colorImg.siz, nativeColorWidth, nativeColorHeight);
+                        colorFb = &fbManager.get(colorImg.address, colorImg.siz, nativeColorWidth, drawnColorHeight);
                     }
 
                     if (colorFb != nullptr) {
