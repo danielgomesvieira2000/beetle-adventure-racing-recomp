@@ -45,3 +45,5 @@ Thumbs.db
 
 # HUD/menu decomp grind staging (transient)
 .grind/
+# Release archives (scripts/package-release.ps1)
+/dist/

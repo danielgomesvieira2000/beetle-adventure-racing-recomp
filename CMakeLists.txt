@@ -48,6 +48,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 # ---- RT64 first: defines the `rt64` target + build_*_shader() helpers ----
 set(RT64_STATIC TRUE)
 set(RT64_SDL_WINDOW_VULKAN TRUE)
+# Linux: every translation unit that includes plume_render_interface_types.h must agree that
+# RenderWindow is an SDL_Window*. RT64 defines these for its own directory only, so RecompFrontend's
+# recompui compiled against the X11 struct and failed on `appCore.window = window_handle`
+# (rt64_render_context.cpp). Defined at this scope, before any library is added -- the fix Hybrid
+# Heaven: Recompiled uses.
+if (UNIX AND NOT APPLE)
+    add_compile_definitions(PLUME_SDL_VULKAN_ENABLED RT64_SDL_WINDOW_VULKAN)
+endif()
 add_compile_definitions(HLSL_CPU)
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib/rt64 ${CMAKE_BINARY_DIR}/rt64)
 # RT64 vendors SDL2 2.26.3, whose SDL_endian.h manually defines _m_prefetch (an old Clang-11

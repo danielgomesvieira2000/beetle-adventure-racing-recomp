@@ -925,8 +925,8 @@ static bool bar_select_and_report(const std::filesystem::path& path, std::u8stri
 
 int main(int argc, char** argv) {
     (void)argc; (void)argv;
-#ifdef _WIN32
-    { extern void bar_install_crash_handler(); bar_install_crash_handler(); }   // symbolized backtrace on AV
+#if defined(_WIN32) || defined(__linux__)
+    { extern void bar_install_crash_handler(); bar_install_crash_handler(); }   // backtrace on a fatal fault
 #endif
 #ifdef _WIN32
     // Raise the Windows timer resolution to 1ms. CRITICAL for menu/sparse-workload framerate: the game's

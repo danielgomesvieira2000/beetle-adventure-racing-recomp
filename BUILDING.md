@@ -33,10 +33,21 @@ RT64's D3D12 backend needs only the **Windows SDK** + RT64's **bundled DXC**
 (`SDL2.dll`, `dxil.dll`, `dxcompiler.dll`) are copied next to the exe automatically.
 
 ## Prerequisites — Linux
+
+> **Work in progress.** The Linux build compiles and links, and the launcher starts under WSLg, but
+> the game crashes during boot there (see `docs/KNOWN_ISSUES.md`). No Linux release is published yet.
+
 ```bash
-sudo apt-get install cmake ninja-build libsdl2-dev libgtk-3-dev libfreetype-dev lld llvm clang
+bash scripts/setup-linux.sh              # lists missing packages; --install installs them
+bash scripts/build-linux.sh              # RelWithDebInfo, frontend on -> build-linux/
+./build-linux/beetle-adventure-racing-recomp
 ```
-Build with **clang** (GCC fails the final link due to recompiled-symbol collisions). RT64 → Vulkan.
+Build with **clang** (GCC fails the final link due to recompiled-symbol collisions); the script picks
+the newest `clang-NN` if the unversioned names are missing. RT64 → Vulkan. The generated sources
+(`RecompiledFuncs/`) are the same C on every platform and must exist first: generate them with the
+pipeline below, or reuse a tree generated on Windows. `BAR_BUILD_DIR`, `BAR_JOBS`, `BAR_CC`/`BAR_CXX`
+override the defaults. A fatal signal prints a backtrace; resolve its `(+0x…)` offsets with
+`addr2line -f -C -e beetle-adventure-racing-recomp 0x…`.
 
 ## Prerequisites — macOS
 Officially supported (native Metal). Needs Homebrew LLVM + CMake/Ninja. Apple Clang builds the

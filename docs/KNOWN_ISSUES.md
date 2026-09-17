@@ -5,6 +5,29 @@ Add the negative results, not just the leads — they are the expensive part.
 
 ---
 
+## OPEN -- Linux: the game crashes during boot (WSLg, llvmpipe)
+
+**Status (2026-09-17):** the Linux build (`scripts/build-linux.sh`, clang-21, Ubuntu 26.04 under WSL2)
+compiles, links and starts: Vulkan comes up on WSLg's llvmpipe and the launcher menu is built. The
+no-frontend build, started with the ROM path, crashes during boot. Not yet tested on native Linux with
+a GPU. Linux is therefore not shipped in 0.3.0-alpha.
+
+Measured (backtraces from the Linux crash handler in `src/main/bar_crash.cpp`, resolved with addr2line):
+
+| Run | Fault address | Where |
+|---|---|---|
+| default | `0x705e67a00000` | `uvMat4FCopy` <- `func_uvdobj_rom_00400770` <- `func_caranim_004003AC` <- `func_selection_004008B0` <- `uvLoadModule`, before the first input frame |
+| `BAR_NO_PREEMPT=1` | `0x7bedd5a00003` | `mio0Decode` <- `uvFileReadBlock`, before input frame 250 |
+
+Both faults land on a 2 MiB boundary, consistent with a guest pointer just past the 512 MiB that
+librecomp makes readable (inferred). Ruled out: the ROM (the cached Linux copy is byte-identical to the
+Windows one), the cooperative preemption (crashes with it off), a different RDRAM reservation per
+platform (librecomp's code is the same), and an obvious `long`-width bug in the port's host files. The
+crash point varies between runs, so timing under software rendering, which is far slower than a GPU, is a
+suspect (inferred) -- as is anything Beetle-specific, since Hybrid Heaven and Body Harvest boot on the
+same WSLg setup. Next: repeat runs to characterise, log the offending guest pointer, and test on native
+Linux.
+
 ## OPEN -- Intermittent crash at boot in `_uvScDoneAud` -> `osSendMesg`
 
 **Seen once, 11 Sep 2026**, on a launch of the frontend build that had started cleanly on the
