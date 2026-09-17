@@ -139,12 +139,17 @@ namespace RT64 {
         Class classifyProjection(ProjKind kind, const Projection &proj, const DrawCallTile *callTiles,
             size_t callTileCount, bool publish);
 
-        // The magnification Class::Cover asks for, as a factor on the projection matrix's x and y.
-        // Returns 1.0 for every other class. BAR draws into a rectangle inset for a television --
-        // (22,17)-(296,223) of its 320x240 screen, the same numbers as the overscan mask -- so the
-        // factors are 320/274 and 240/206, both about 1.167. BAR_HUD_COVER_INSET="l,t,r,b" overrides
-        // the rectangle, because it is measured from one game and this class is not.
-        void coverScale(Class cls, float *outX, float *outY);
+        // The magnification Class::Cover asks for, as a factor on the projection matrix's x and y,
+        // which scales the layer about the centre of BAR's 320x240 screen. Returns 1.0 for every other
+        // class. The factors put the layer's own quad on the frame's edges: `quadMin`/`quadMax` are the
+        // screen-space bounds (N64 pixels) of the layer's first draw call. The same layer draws
+        // different quads -- (21,16)-(297,225) on the pause screen, (31,23)-(288,219) in the pre-race
+        // course overview -- so one fixed rectangle left the overview short of the edges. Each factor
+        // is the larger of the two sides' ratios, so an off-centre quad still reaches both edges.
+        // With no usable bounds, the television inset (22,17)-(296,223) is used instead.
+        // BAR_HUD_COVER_INSET="l,t,r,b" forces a fixed rectangle, as before.
+        void coverScale(Class cls, float quadMinX, float quadMinY, float quadMaxX, float quadMaxY,
+            float *outX, float *outY);
 
         // Turns a class into the viewport origin the projection processor wants. Stretch and Center
         // both give G_EX_ORIGIN_NONE -- Stretch is expressed by suppressing the aspect-ratio

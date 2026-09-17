@@ -111,17 +111,29 @@ and then `ortho:5` Cover would have hit whatever layer is fifth on another cours
 entries were removed from `sBuiltinTags`. The pause backdrop's content identity is now tagged Cover,
 and the speedometer needs no tag, because an untagged orthographic layer is Left in a race.
 
-**Open: the pause backdrop does not always cover the frame.** With `ortho#269E7CEF` tagged Cover (or
-Stretch), the dark area still moves with the scene: it covers less or more depending on where the car
-is, and the map overview shows the same. Measured with `BAR_HUD_TRACE` so far:
-* its identity is stable through every pause, so the tag does reach it;
-* it is **not** a framebuffer copy: the texture flag is set but `tileCount=0`, and it uses the
-  primitive-colour combiner `FCFFFFFF:FFFE7838`;
-* its render mode `L=0x0C184340` is force-blend with no depth compare or update, so depth cannot
-  hide part of it.
+**Cover scales from the quad's own size (17 Sep 2026).** The backdrop layer `ortho#269E7CEF` is a
+flat, force-blended, untextured full-screen quad with no depth test (geometry mode `0x00A00004`, other
+mode `L=0x0C184340`), and its identity is stable. It draws different quads, though: (21,16)-(297,225) on
+the pause screen and (31,23)-(288,219) during the pre-race course overview. Cover used one fixed
+magnification (the television inset, 320/274 by 240/206), which left the overview's smaller quad short
+of the frame's edges. `BarHud::coverScale` now takes the screen bounds of the layer's first draw call,
+from the RSP's `posScreen`, and picks, for each axis, the larger of the two sides' centre-to-edge
+ratios. The overview now covers the frame; confirmed in Daniel's playtest.
+`BAR_HUD_COVER_INSET="l,t,r,b"` still forces a fixed rectangle.
 
-Not yet measured: whether RT64's widened-viewport path clips it to the framebuffer pair's scissor,
-which is built from everything drawn that frame.
+Ruled out along the way, each by measurement: an unstable identity, a framebuffer-copy texture
+(`tileCount=0`), depth (neither the other mode nor the geometry mode enables it), clipping to the
+framebuffer pair's scissor (constant, full 320x240), and the viewport path (inputs constant).
+
+**Open: pause-screen flicker at the bottom.** With Cover, on every other presented frame, a band at the
+bottom is not darkened while the pause camera orbits the car. `BAR_SHOT_BURST="6760:b:120"` (relative
+directory, because the spec is split on `:`) measured it at up to 68 of 1080 px, which is exactly the
+15 N64 px between the quad's bottom (225) and the screen's (240). The band is absent with the backdrop
+tagged Center, so on those presents the quad's bottom edge is not magnified. Its changing height is
+probably only how much the scene under that strip differs between frames (inference). Giving the
+interpolation's previous projection the same Cover factors did not change it, and was reverted. Lead:
+the layer's final viewport alternates between 638x478 and 4255x2390 from one present to the next, so
+two render paths draw it.
 
 A `dl:` identity is the next weakest: several draws can share one display list, so a tag on
 one may catch its neighbours. Check the outline before believing it, and if it over-matches, say so

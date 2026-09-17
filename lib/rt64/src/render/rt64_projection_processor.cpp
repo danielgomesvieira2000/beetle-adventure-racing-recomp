@@ -218,7 +218,24 @@ namespace {
             if (orthoClass == BarHud::Class::Cover) {
                 float coverX = 1.0f;
                 float coverY = 1.0f;
-                BarHud::coverScale(orthoClass, &coverX, &coverY);
+                // The first call's screen-space bounds, as the RSP transformed them.
+                float quadMinX = 1e9f, quadMinY = 1e9f, quadMaxX = -1e9f, quadMaxY = -1e9f;
+                if (proj.gameCallCount > 0) {
+                    const GameCall &firstCall = proj.gameCalls[0];
+                    const uint32_t indexCount = firstCall.callDesc.triangleCount * 3;
+                    for (uint32_t i = 0; i < indexCount; i++) {
+                        const size_t faceIndex = size_t(firstCall.meshDesc.faceIndicesStart) + i;
+                        if (faceIndex >= drawData.faceIndices.size()) break;
+                        const uint32_t vertexIndex = drawData.faceIndices[faceIndex];
+                        if (vertexIndex >= drawData.posScreen.size()) break;
+                        const hlslpp::float3 &screenPos = drawData.posScreen[vertexIndex];
+                        quadMinX = std::min(quadMinX, float(screenPos[0]));
+                        quadMinY = std::min(quadMinY, float(screenPos[1]));
+                        quadMaxX = std::max(quadMaxX, float(screenPos[0]));
+                        quadMaxY = std::max(quadMaxY, float(screenPos[1]));
+                    }
+                }
+                BarHud::coverScale(orthoClass, quadMinX, quadMinY, quadMaxX, quadMaxY, &coverX, &coverY);
                 projMatrix[0][0] *= coverX;
                 projMatrix[1][0] *= coverX;
                 projMatrix[2][0] *= coverX;
@@ -236,6 +253,7 @@ namespace {
                 const interop::float4x4 curProjTransform = projMatrix;
                 interop::float4x4 adjustedPrevProj = *prevProjMatrix;
                 adjustProjectionMatrix(adjustedPrevProj, projRatioScale);
+
                 viewMatrix = rigidBody->lerp(p.curFrameWeight, *prevViewMatrix, curViewTransform, true);
                 prevViewTransform = rigidBody->lerp(p.prevFrameWeight, *prevViewMatrix, curViewTransform, true);
 

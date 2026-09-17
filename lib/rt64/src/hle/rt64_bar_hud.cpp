@@ -4,6 +4,7 @@
 
 #include "rt64_bar_hud.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
@@ -212,8 +213,8 @@ namespace RT64 {
             // removed. The speedometer needs no tag -- an untagged orthographic layer is Left in a race.
             // ortho#269E7CEF: the pause backdrop, tagged Cover by Daniel in the panel. Traced as a flat,
             // untextured, force-blended full-screen quad with no depth test, one identity through every
-            // pause. OPEN: it does not always cover the frame (the covered area moves with the scene, and
-            // Stretch behaves the same), which the tag cannot explain -- see docs/HUD-INSPECTOR.md.
+            // pause. Also drawn smaller for the pre-race course overview, which coverScale handles. OPEN:
+            // a bottom band flickers on alternate presents while paused -- see docs/HUD-INSPECTOR.md.
             { "ortho#269E7CEF", Class::Cover },
             // persp#0DB8F095: a 3D layer, tagged Center by Daniel. Center is already the default for a
             // perspective layer, so this changes nothing unless that default does.
@@ -505,11 +506,26 @@ namespace RT64 {
             return cls;
         }
 
-        void coverScale(Class cls, float *outX, float *outY) {
+        void coverScale(Class cls, float quadMinX, float quadMinY, float quadMaxX, float quadMaxY,
+            float *outX, float *outY)
+        {
             *outX = 1.0f;
             *outY = 1.0f;
             if (cls != Class::Cover) {
                 return;
+            }
+
+            // The quad's own bounds, unless a fixed rectangle was asked for. Scaling is about the
+            // screen centre (160,120), so each side needs centre/distance; the larger covers both.
+            const bool forcedInset = (std::getenv("BAR_HUD_COVER_INSET") != nullptr);
+            if (!forcedInset && (quadMinX < 160.0f) && (quadMaxX > 160.0f) && (quadMinY < 120.0f) && (quadMaxY > 120.0f)) {
+                const float sx = std::max(160.0f / (160.0f - quadMinX), 160.0f / (quadMaxX - 160.0f));
+                const float sy = std::max(120.0f / (120.0f - quadMinY), 120.0f / (quadMaxY - 120.0f));
+                if ((sx >= 1.0f) && (sy >= 1.0f) && (sx < 4.0f) && (sy < 4.0f)) {
+                    *outX = sx;
+                    *outY = sy;
+                    return;
+                }
             }
 
             // The rectangle BAR authors its full-screen 2D into. Measured with BAR_DBG_RECT during a
