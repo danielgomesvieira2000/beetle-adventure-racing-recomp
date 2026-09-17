@@ -1374,6 +1374,10 @@ namespace RT64 {
                 texture.address, state->displayListAddress, state->drawCall.textureOn != 0,
                 fillColorStack[fillColorStackSize - 1]);
 
+            if ((cls == BarHud::Class::Stretch) && (BarHud::gameState() == 14)) {
+                fbPair.barMenuStretch = true;
+            }
+
             switch (cls) {
             case BarHud::Class::Left:
             case BarHud::Class::Right:

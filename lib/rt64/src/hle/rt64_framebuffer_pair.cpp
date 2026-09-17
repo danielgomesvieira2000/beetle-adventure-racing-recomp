@@ -21,6 +21,7 @@ namespace RT64 {
         depthWrite = false;
         syncRequired = false;
         fillRectOnly = true;
+        barMenuStretch = false;
         ditherPatterns.fill(0);
         scissorRect.reset();
         startFbDiscards.clear();

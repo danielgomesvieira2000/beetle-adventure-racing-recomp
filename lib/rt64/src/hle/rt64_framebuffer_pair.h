@@ -45,6 +45,10 @@ namespace RT64 {
         bool depthWrite;
         bool syncRequired;
         bool fillRectOnly; // This only applies if there's at least one draw call.
+        // BAR: a menu frame (game state 14) drew a Stretch-tagged rectangle into this pair. The workload
+        // queue clears such a colour image to black once per frame before its first pair is drawn; see
+        // WorkloadQueue "BAR menu clear".
+        bool barMenuStretch = false;
         std::vector<uint32_t> startFbDiscards;
         std::vector<FramebufferOperation> startFbOperations;
         std::vector<FramebufferOperation> endFbOperations;

@@ -137,6 +137,8 @@ virtualised 1536×864 view of a 1920×1080 window and produces an image that loo
 | `BAR_DBG_PAK=1` | Controller Pak / joybus traffic, every distinct SI frame shape both directions, motor writes, and port 0's accessory flags byte / `pfs->status` / `pfs->activebank` on every change |
 | `BAR_RUMBLE_TRACE=1` | Once a second per active port: motor writes/s, mean duty, peak modelled level, last strength sent (`src/main/bar_rumble.cpp`). Works in `build-cmake` too, where the model runs for the trace only |
 | `BAR_RUMBLE_RAW=1` | Bypass the motor model and use recompinput's on/off rumble path (A/B) |
+| `BAR_NO_ROLL_COMPOSE=1` | Present the menu film roll from RDRAM again (4:3) instead of composing it from the two widescreen render targets (`docs/R6_FILMROLL_FINDINGS.md`) |
+| `BAR_NO_MENU_CLEAR=1` | Do not clear menu framebuffers that contain Stretch-tagged pieces each frame (A/B for the Track Select flicker fix, `docs/HUD-INSPECTOR.md`) |
 | `BAR_NO_FB_FULL_HEIGHT=1` | Size framebuffer render targets to the drawn extent again, instead of the full VI height for full-screen pairs (A/B for the pause-backdrop flicker fix, `docs/HUD-INSPECTOR.md`) |
 | `BAR_NO_RUMBLE_PAK=1` | Serve the Controller Pak alone: plain identify echo, no motor, `fix-recompiled.sh` rule I inert. The A/B for anything that looks like a save or pak-prompt regression |
 | `BAR_DBG_UI=1` | Frontend diagnostics to `bar_ui_trace.log`. **Required** to see frontend faults at all: the release build is `/SUBSYSTEM:WINDOWS`, so stderr goes nowhere and shell redirection captures nothing |

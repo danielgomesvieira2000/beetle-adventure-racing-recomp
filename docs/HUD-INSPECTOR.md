@@ -125,6 +125,21 @@ Ruled out along the way, each by measurement: an unstable identity, a framebuffe
 (`tileCount=0`), depth (neither the other mode nor the geometry mode enables it), clipping to the
 framebuffer pair's scissor (constant, full 320x240), and the viewport path (inputs constant).
 
+**Track Select flicker (fixed with a menu clear, 17 Sep 2026).** The menu's film frame is tagged
+Stretch (corners `tex:0x001C0440`, side pieces `tex:0x001C1EA8`, top/bottom `tex:0x001BFB08`). Most
+panels hold live 3D that widens with the frame, but Track Select's preview is a fixed 4:3 picture, so the
+widened opening beside it is never drawn, and BAR does not clear these pages every frame. Each of the two
+alternating framebuffers kept different leftover pixels there (old glyph fragments), which flickered.
+Measured: without the promoted tags, or with the three frame tags overridden to Center, no flicker (but
+Center leaves grey sprocket ghosts beside the panel on the other pages). Rejected: extending the frame
+pieces to the edge instead of scaling them (flicker 4,812 -> 589 px, but the ghosts showed) and tagging
+the screen clears Stretch (the previous page's 3D showed in the gap, since the clear is not per frame).
+
+Fix: `RDP::drawRect` marks the framebuffer pair when a Stretch rectangle is drawn on a menu (game state
+14); `WorkloadQueue` clears that colour image to black once per frame, before its first pair.
+`BAR_NO_MENU_CLEAR=1` turns it off. Verified: 60-present burst on Track Select with no flicker region, the
+other pages unchanged; Daniel's playtest.
+
 **Pause-screen flicker at the bottom (fixed in RT64's framebuffer sizing, 17 Sep 2026).** With Cover,
 every other presented frame showed a band at the bottom that was not darkened while the pause camera
 orbited the car. `BAR_SHOT_BURST="6760:b:120"` measured it at up to 68 of 1080 px (the spec is split on

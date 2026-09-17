@@ -2,6 +2,7 @@
 // RT64
 //
 
+#include <algorithm>
 #include <cstdlib>
 #include "rt64_workload_queue.h"
 
@@ -730,6 +731,25 @@ namespace RT64 {
             
             // Record all framebuffer pairs.
             uint32_t framebufferIndex = 0;
+
+            // BAR menu clear. BAR's menu pages are composed from a stretched film frame around a panel.
+            // Most panels hold live 3D that widens with the frame, but Track Select's preview is a fixed
+            // 4:3 picture, and the game never draws the strips beside it inside the widened opening. Each
+            // of the two alternating framebuffers kept different leftover pixels there (flicker, measured
+            // with BAR_SHOT_BURST). BAR does not clear these pages every frame, so clear any colour image a
+            // menu frame stretched into, once, before its first pair; the game redraws everything inside
+            // the frame each frame, so only the never-drawn strips change (to black).
+            // BAR_NO_MENU_CLEAR=1 turns it off.
+            static const bool barMenuClearEnabled = (std::getenv("BAR_NO_MENU_CLEAR") == nullptr);
+            std::vector<uint32_t> barMenuClearAddresses;
+            if (barMenuClearEnabled) {
+                for (uint32_t f = 0; f < fbPairCount; f++) {
+                    const FramebufferPair &pair = workload.fbPairs[f];
+                    if (pair.barMenuStretch && (std::find(barMenuClearAddresses.begin(), barMenuClearAddresses.end(), pair.colorImage.address) == barMenuClearAddresses.end())) {
+                        barMenuClearAddresses.push_back(pair.colorImage.address);
+                    }
+                }
+            }
             for (uint32_t f = 0; f < fbPairCount; f++) {
                 const FramebufferPair &fbPair = workload.fbPairs[f];
                 bool validTargets = getTargetsFromPair(f);
@@ -770,6 +790,13 @@ namespace RT64 {
                             }
 
                             colorFb->readHeight = colorFb->height;
+                        }
+
+                        // BAR menu clear (see above): once per colour image, before its first pair's draws.
+                        auto barMenuClearIt = std::find(barMenuClearAddresses.begin(), barMenuClearAddresses.end(), colorImg.address);
+                        if (barMenuClearIt != barMenuClearAddresses.end()) {
+                            colorTarget->clearColorTarget(ext.workloadGraphicsWorker);
+                            barMenuClearAddresses.erase(barMenuClearIt);
                         }
                     }
 
