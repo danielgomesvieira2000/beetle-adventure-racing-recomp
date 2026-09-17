@@ -4,11 +4,15 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 #include "common/rt64_common.h"
 
 namespace RT64 {
+    struct Projection;
+    struct DrawCallTile;
+
     // BAR authors its HUD against a fixed 320x240 screen, so in a widened frame RT64's default
     // placement (scale the element about the frame's centre by the inverse aspect scale) leaves the
     // whole HUD huddled in the middle 4:3 region with empty picture either side of it. Anchoring
@@ -123,8 +127,17 @@ namespace RT64 {
             Other = 3,         // "proj:<n>"
         };
 
-        Class classifyProjection(ProjKind kind, uint32_t projectionIndex, const FixedRect &scissor,
-            bool publish);
+        // A projection layer is identified by WHAT IT DRAWS, never by its index. The index is only
+        // its position in this frame's list, and that differs between courses and screens: the
+        // speedometer's needle was ortho:1 on one course and ortho:3 on another, while ortho:5 was
+        // the pause backdrop, so every tag promoted against an index fixed one course and broke
+        // another. The identity is "<kind>#<hash>", a hash over the layer's FIRST draw call of its
+        // colour combiner, other mode, texture on/off, triangle count and, when textured, the
+        // content hash of each texture tile. Colours and vertices are left out on purpose: they
+        // animate (fades, the needle's angle) while the layer stays the same element.
+        // `callTiles` is the workload's DrawCallTile array the calls' tileIndex refers to.
+        Class classifyProjection(ProjKind kind, const Projection &proj, const DrawCallTile *callTiles,
+            size_t callTileCount, bool publish);
 
         // The magnification Class::Cover asks for, as a factor on the projection matrix's x and y.
         // Returns 1.0 for every other class. BAR draws into a rectangle inset for a television --

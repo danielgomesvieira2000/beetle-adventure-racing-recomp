@@ -79,7 +79,7 @@ namespace {
             // texture rectangles, and those layers are decided here rather than in the RDP. They do
             // not all want the same thing -- the speedometer's needle has to follow its dial to the
             // left edge, while the pause screen's backdrop has to cover the whole widened frame --
-            // so the answer is per projection, and taggable by the number RT64's own debugger shows.
+            // so the answer is per projection, and taggable by a hash of what the layer draws.
             // See BarHud::classifyOrtho.
             //
             // Only a layer the game left unpinned is ours to decide; one that already carries an
@@ -87,8 +87,8 @@ namespace {
             uint16_t viewportOrigin = drawData.viewportOrigins[proj.transformsIndex];
             BarHud::Class orthoClass = BarHud::Class::Center;
             if (viewportOrigin == G_EX_ORIGIN_NONE) {
-                orthoClass = BarHud::classifyProjection(barProjKind(proj.type),
-                    sceneProj.projectionIndex, proj.scissorRect, true);
+                orthoClass = BarHud::classifyProjection(barProjKind(proj.type), proj,
+                    drawData.callTiles.data(), drawData.callTiles.size(), true);
                 viewportOrigin = BarHud::viewportOriginFor(orthoClass);
             }
             assert(proj.transformsIndex > 0);

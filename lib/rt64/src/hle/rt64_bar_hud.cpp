@@ -11,6 +11,9 @@
 #include <set>
 
 #include "../include/rt64_extended_gbi.h"
+#include "rt64_draw_call.h"
+#include "rt64_game_call.h"
+#include "rt64_projection.h"
 
 // The port installs these; see the header. Null in a standalone RT64, which is why every call site
 // checks.
@@ -125,11 +128,9 @@ namespace RT64 {
 
             // Promoted 17 Sep 2026, from hud.json (59 entries, in the file's order within each class).
             // Unnamed, like the entries above: the inspector session that made them did not record what
-            // each element is. Two kinds here are weak identities (docs/HUD-INSPECTOR.md): the ortho:<n>
-            // tags are positional, so a screen with a different projection order moves them onto another
-            // layer, and fill:0xFFFCFFFC names a colour, not an element. They were live in hud.json in every
-            // scene before promotion, so shipping them changes nothing for that session, but they are the
-            // first suspects if a screen that was not checked shows a misplaced layer.
+            // each element is. fill:0xFFFCFFFC (below) names a colour, not an element, so it is the first
+            // suspect if a screen that was not checked shows a misplaced rectangle. The ortho:<n> tags this
+            // pass also promoted were removed on the same day: see the content-identity pass below.
             { "tex:0x003768A0", Class::Center },
             { "tex:0x00417BE0", Class::Center },
             { "tex:0x003D9B38", Class::Center },
@@ -173,10 +174,7 @@ namespace RT64 {
             { "tex:0x00420AB8", Class::Center },
             { "tex:0x00419C30", Class::Center },
             { "tex:0x00410450", Class::Center },
-            { "ortho:5", Class::Left },
-            { "ortho:7", Class::Cover },
-            { "ortho:4", Class::Cover },
-            // Saved in the same session after the list above was taken (ortho:3 is positional too).
+            // Saved in the same session after the list above was taken.
             { "tex:0x0039E290", Class::Center },
             { "tex:0x003D2EF0", Class::Center },
             { "tex:0x003D8368", Class::Center },
@@ -203,17 +201,23 @@ namespace RT64 {
             { "tex:0x003B74D0", Class::Center },
             { "tex:0x00376330", Class::Left },
 
-            // Promoted 17 Sep 2026 (third pass): the speedometer. Its needle is an orthographic layer whose
-            // index differs between courses, so ortho:1, ortho:2, ortho:3 and ortho:5 are all the speedometer
-            // on one course or another. The earlier passes had tagged 1-3 Center, which pinned the
-            // speedometer to the middle of the screen on those courses. An untagged ortho layer is already
-            // Left during a race; these tags also apply outside one, and a menu A/B (Race Type through
-            // Transmission, 1280x720) showed no layout change. fill:0xFFFCFFFC was moved from Center to Left
-            // in the same session.
-            { "ortho:1", Class::Left },
-            { "ortho:2", Class::Left },
-            { "ortho:3", Class::Left },
+            // Promoted 17 Sep 2026 (third pass). fill:0xFFFCFFFC was moved from Center to Left while fixing
+            // the speedometer.
             { "fill:0xFFFCFFFC", Class::Left },
+
+            // Promoted 17 Sep 2026 (content identities). Projection layers are named by what they draw
+            // (<kind>#<hash> of the layer's first draw call, see classifyProjection), no longer by their
+            // index: the index differs between courses, so the ortho:1-5 and ortho:7 tags promoted earlier
+            // pinned the speedometer or the pause backdrop onto the wrong layer on other courses, and were
+            // removed. The speedometer needs no tag -- an untagged orthographic layer is Left in a race.
+            // ortho#269E7CEF: the pause backdrop, tagged Cover by Daniel in the panel. Traced as a flat,
+            // untextured, force-blended full-screen quad with no depth test, one identity through every
+            // pause. OPEN: it does not always cover the frame (the covered area moves with the scene, and
+            // Stretch behaves the same), which the tag cannot explain -- see docs/HUD-INSPECTOR.md.
+            { "ortho#269E7CEF", Class::Cover },
+            // persp#0DB8F095: a 3D layer, tagged Center by Daniel. Center is already the default for a
+            // perspective layer, so this changes nothing unless that default does.
+            { "persp#0DB8F095", Class::Center },
         };
 
         static bool builtinTag(const char *identity, const char *secondIdentity, Class *outClass) {
@@ -401,16 +405,53 @@ namespace RT64 {
             return leftOriginFor(cls);
         }
 
-        Class classifyProjection(ProjKind kind, uint32_t projectionIndex, const FixedRect &scissor,
-            bool publish)
+        // FNV-1a over the fields that say what a layer draws. See the declaration for what is in
+        // it and what is deliberately not.
+        static uint32_t projectionContentHash(const Projection &proj, const DrawCallTile *callTiles,
+            size_t callTileCount)
         {
-            // The identity carries the projection's kind and the number RT64's own Game editor puts
-            // on it, so that what is seen there and what is tagged here are the same thing.
+            uint64_t h = 1469598103934665603ULL;
+            auto mix = [&h](uint64_t v) {
+                for (int i = 0; i < 8; i++) {
+                    h ^= (v >> (i * 8)) & 0xFF;
+                    h *= 1099511628211ULL;
+                }
+            };
+
+            // Only the layer's FIRST draw call. Hashing every call was measured to be unstable: a
+            // menu layer (~200 calls) and the 3D world changed identity almost every frame, because
+            // text, digits and geometry come and go within the layer. What a layer opens with -- the
+            // pause backdrop's quad, the speedometer needle -- is the element it exists for.
+            for (uint32_t c = 0; (c < proj.gameCallCount) && (c < 1); c++) {
+                const DrawCall &call = proj.gameCalls[c].callDesc;
+                mix((uint64_t(call.colorCombiner.L) << 32) | call.colorCombiner.H);
+                mix((uint64_t(call.otherMode.L) << 32) | call.otherMode.H);
+                mix((uint64_t(call.textureOn) << 32) | call.triangleCount);
+                if (call.textureOn && (callTiles != nullptr)) {
+                    for (uint32_t t = 0; t < call.tileCount; t++) {
+                        const size_t tileIndex = size_t(call.tileIndex) + t;
+                        if (tileIndex < callTileCount) {
+                            mix(callTiles[tileIndex].tmemHashOrID);
+                        }
+                    }
+                }
+            }
+
+            return uint32_t(h ^ (h >> 32));
+        }
+
+        Class classifyProjection(ProjKind kind, const Projection &proj, const DrawCallTile *callTiles,
+            size_t callTileCount, bool publish)
+        {
+            // The identity names the layer by its content, with its kind as the prefix so the
+            // inspector can still tell a 3D layer from a 2D one. Never by index -- see the declaration.
             static const char *const kPrefixes[] = { "persp", "ortho", "rect", "proj" };
             const char *prefix = kPrefixes[int(kind) & 3];
+            const FixedRect &scissor = proj.scissorRect;
 
             char identity[24];
-            std::snprintf(identity, sizeof(identity), "%s:%u", prefix, unsigned(projectionIndex));
+            std::snprintf(identity, sizeof(identity), "%s#%08X", prefix,
+                projectionContentHash(proj, callTiles, callTileCount));
 
             // Precedence, the same as for rectangles: the panel's live override and hud.json
             // first (both answered by the port), then an identity promoted into the build, and only
@@ -438,6 +479,21 @@ namespace RT64 {
                 Class builtin = Class::Center;
                 if (builtinTag(identity, "", &builtin)) {
                     cls = builtin;
+                }
+            }
+
+            // BAR_HUD_TRACE: each distinct orthographic identity once per racing/paused state, with its
+            // call count, extent and class, so a scripted run can show an element keeping its identity
+            // across courses and screens.
+            if (publish && traceEnabled() && (kind == ProjKind::Orthographic)) {
+                static std::set<uint64_t> seenProj;
+                const uint64_t key = (uint64_t(std::strtoul(identity + std::strlen(prefix) + 1, nullptr, 16)) << 2) |
+                    uint64_t(racing() ? 1 : 0) | (uint64_t(paused() ? 1 : 0) << 1);
+                if (seenProj.insert(key).second && (seenProj.size() <= 2000)) {
+                    fprintf(stdout, "[hud-proj] %s calls=%u scissor=(%.1f,%.1f)-(%.1f,%.1f) racing=%d paused=%d class=%d\n",
+                        identity, proj.gameCallCount, scissor.ulx / 4.0f, scissor.uly / 4.0f, scissor.lrx / 4.0f,
+                        scissor.lry / 4.0f, racing() ? 1 : 0, paused() ? 1 : 0, int(cls));
+                    fflush(stdout);
                 }
             }
 

@@ -79,21 +79,49 @@ stretched the text. So:
 | `tex` | `tex:<G_SETTIMG address>` | `dl:<display list>` | A textured element is named by its texture; the display list separates two uses of one texture. |
 | `fill` | `fill:<fill colour>` | `dl:<display list>` | A fill-cycle rectangle has no texture. Its colour is far more specific than its display list and stable between frames — a backdrop keeps its colour. |
 | `untex` | `dl:<display list>` | `untex` | A shaded or blended rectangle — what a translucent overlay is. The display list is all there is, so it *is* the identity, and the texture address is deliberately not offered because it belongs to somebody else. |
-| `persp` `ortho` `rect` `proj` | `<kind>:<projection index>` | — | A whole **projection**, not a single draw: the 3D world, 2D drawn as geometry, the layer rectangles are drawn into, anything else. A projection is the only handle on anything drawn as geometry, because individual triangles are not hooked. |
+| `persp` `ortho` `rect` `proj` | `<kind>#<content hash>` | — | A whole **projection**, not a single draw: the 3D world, 2D drawn as geometry, the layer rectangles are drawn into, anything else. A projection is the only handle on anything drawn as geometry, because individual triangles are not hooked. |
 
 **Projection rows mean something different from element rows:** `left` and
 `right` give the layer a viewport origin, `center` lets it be widened with its aspect ratio
 compensated (content proportional, more empty space either side), `stretch` suppresses that
 compensation so the layer's 320-wide space maps across the whole frame, and `spill` is meaningless
-and treated as `center`. The projection index is the one RT64's own Game editor shows — its
-`Orthographic #4` is `ortho:4` here.
+and treated as `center`.
+
+**A projection is named by what it draws, never by its index.** The identity is `<kind>#<hash>`, a
+hash over the layer's **first** draw call: its colour combiner, other mode, texture on/off, triangle
+count and, when textured, the content hash of each texture tile (`BarHud::classifyProjection`).
+Colours and vertex positions are left out because they animate. Only the first call counts because
+hashing every call was measured to be unstable: menu layers (~200 calls) and the 3D world changed
+identity almost every frame. The first call is what the layer exists for (the pause backdrop's
+quad, the speedometer needle). `BAR_HUD_TRACE=1` prints each orthographic identity once, with whether
+the game was racing. In two Coventry Cove runs the race used the same three: `ortho#F7DDEF1C`,
+`ortho#F1760FE9` and `ortho#269E7CEF`. Other courses are not yet measured.
 
 Two warnings specific to them. **The outline is the projection's scissor**, which for a full-screen
 layer is the whole screen, so hovering will not tell two such layers apart — try them one at a time
-instead. And **`ortho:<n>` is positional**, which makes it the weakest identity of the four: a
-projection order that differs between screens moves the tag onto a different layer.
+instead. And a **3D (`persp`) or busy menu layer's identity can still change** as its first draw
+call changes. Tag the 2D layers a race or pause screen opens with, not those.
 
-**Worked example (17 Sep 2026): the speedometer.** Its needle is an orthographic layer whose index differs between courses (`ortho:1`, `2`, `3` and `5` have all been it). Center tags promoted for `ortho:1`-`3` from other sessions pinned the speedometer to the middle of the screen, but only on the courses that draw it on one of those layers. All four are now Left in `sBuiltinTags`. When an `ortho:<n>` tag is involved and a problem shows up on only some courses or screens, suspect the index first.
+**Why the index was dropped (17 Sep 2026).** The identity used to be `<kind>:<projection index>`,
+the number RT64's Game editor shows. That index is only a position in the frame's projection list,
+and it differs between courses and screens. The speedometer's needle was `ortho:1` on one course and
+`ortho:3` on another, and `ortho:5` was the pause backdrop. Center tags promoted for `ortho:1`-`3`
+pinned the speedometer to the middle of the screen on some courses. Moving them to Left fixed that,
+and then `ortho:5` Cover would have hit whatever layer is fifth on another course. The `ortho:<n>`
+entries were removed from `sBuiltinTags`. The pause backdrop's content identity is now tagged Cover,
+and the speedometer needs no tag, because an untagged orthographic layer is Left in a race.
+
+**Open: the pause backdrop does not always cover the frame.** With `ortho#269E7CEF` tagged Cover (or
+Stretch), the dark area still moves with the scene: it covers less or more depending on where the car
+is, and the map overview shows the same. Measured with `BAR_HUD_TRACE` so far:
+* its identity is stable through every pause, so the tag does reach it;
+* it is **not** a framebuffer copy: the texture flag is set but `tileCount=0`, and it uses the
+  primitive-colour combiner `FCFFFFFF:FFFE7838`;
+* its render mode `L=0x0C184340` is force-blend with no depth compare or update, so depth cannot
+  hide part of it.
+
+Not yet measured: whether RT64's widened-viewport path clips it to the framebuffer pair's scissor,
+which is built from everything drawn that frame.
 
 A `dl:` identity is the next weakest: several draws can share one display list, so a tag on
 one may catch its neighbours. Check the outline before believing it, and if it over-matches, say so

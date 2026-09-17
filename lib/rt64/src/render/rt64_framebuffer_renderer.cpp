@@ -1532,7 +1532,8 @@ namespace {
             uint16_t viewportOrigin = drawData.viewportOrigins[proj.transformsIndex];
             if (viewportOrigin == G_EX_ORIGIN_NONE) {
                 viewportOrigin = BarHud::viewportOriginFor(
-                    BarHud::classifyProjection(barProjKind(proj.type), pr, proj.scissorRect, false));
+                    BarHud::classifyProjection(barProjKind(proj.type), proj, drawData.callTiles.data(),
+                        drawData.callTiles.size(), false));
             }
             const bool barAnchoredViewport = (viewportOrigin != drawData.viewportOrigins[proj.transformsIndex]);
             if (proj.usesViewport()) {
