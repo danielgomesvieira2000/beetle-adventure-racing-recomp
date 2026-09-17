@@ -93,6 +93,8 @@ layer is the whole screen, so hovering will not tell two such layers apart — t
 instead. And **`ortho:<n>` is positional**, which makes it the weakest identity of the four: a
 projection order that differs between screens moves the tag onto a different layer.
 
+**Worked example (17 Sep 2026): the speedometer.** Its needle is an orthographic layer whose index differs between courses (`ortho:1`, `2`, `3` and `5` have all been it). Center tags promoted for `ortho:1`-`3` from other sessions pinned the speedometer to the middle of the screen, but only on the courses that draw it on one of those layers. All four are now Left in `sBuiltinTags`. When an `ortho:<n>` tag is involved and a problem shows up on only some courses or screens, suspect the index first.
+
 A `dl:` identity is the next weakest: several draws can share one display list, so a tag on
 one may catch its neighbours. Check the outline before believing it, and if it over-matches, say so
 — the element needs something more specific than this scheme currently provides.

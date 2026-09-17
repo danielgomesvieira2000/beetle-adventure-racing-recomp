@@ -133,12 +133,10 @@ namespace RT64 {
             { "tex:0x003768A0", Class::Center },
             { "tex:0x00417BE0", Class::Center },
             { "tex:0x003D9B38", Class::Center },
-            { "ortho:1", Class::Center },
             { "tex:0x003D4E40", Class::Center },
             { "tex:0x004199A0", Class::Center },
             { "tex:0x0041D840", Class::Center },
             { "tex:0x0041E720", Class::Center },
-            { "fill:0xFFFCFFFC", Class::Center },
             { "tex:0x00418C88", Class::Center },
             { "tex:0x00362358", Class::Center },
             { "tex:0x004048D8", Class::Center },
@@ -146,7 +144,6 @@ namespace RT64 {
             { "tex:0x003D3E98", Class::Center },
             { "tex:0x004092A8", Class::Center },
             { "tex:0x003D69F8", Class::Center },
-            { "ortho:2", Class::Center },
             { "tex:0x003D8A88", Class::Center },
             { "tex:0x003D00C8", Class::Center },
             { "tex:0x003D9968", Class::Center },
@@ -182,7 +179,6 @@ namespace RT64 {
             // Saved in the same session after the list above was taken (ortho:3 is positional too).
             { "tex:0x0039E290", Class::Center },
             { "tex:0x003D2EF0", Class::Center },
-            { "ortho:3", Class::Center },
             { "tex:0x003D8368", Class::Center },
             { "tex:0x00400EE8", Class::Center },
             { "tex:0x00400008", Class::Center },
@@ -206,6 +202,18 @@ namespace RT64 {
             { "tex:0x00411408", Class::Center },
             { "tex:0x003B74D0", Class::Center },
             { "tex:0x00376330", Class::Left },
+
+            // Promoted 17 Sep 2026 (third pass): the speedometer. Its needle is an orthographic layer whose
+            // index differs between courses, so ortho:1, ortho:2, ortho:3 and ortho:5 are all the speedometer
+            // on one course or another. The earlier passes had tagged 1-3 Center, which pinned the
+            // speedometer to the middle of the screen on those courses. An untagged ortho layer is already
+            // Left during a race; these tags also apply outside one, and a menu A/B (Race Type through
+            // Transmission, 1280x720) showed no layout change. fill:0xFFFCFFFC was moved from Center to Left
+            // in the same session.
+            { "ortho:1", Class::Left },
+            { "ortho:2", Class::Left },
+            { "ortho:3", Class::Left },
+            { "fill:0xFFFCFFFC", Class::Left },
         };
 
         static bool builtinTag(const char *identity, const char *secondIdentity, Class *outClass) {
