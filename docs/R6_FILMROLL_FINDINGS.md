@@ -67,3 +67,31 @@ was always correct; the fault was entirely in RT64's present mode.
   `dir/fNNNN.png`, one per present — for animations the input-frame timeline can't sample (the game blocks
   in the render loop during the roll and stops polling input). Triggers: `BAR_SHOT_BURST="fc:dir:count"`
   (main.cpp, fires at input frame `fc`). See docs/HEADLESS_TESTING.md.
+
+## Widescreen roll (17 Sep 2026)
+
+**Symptom:** with the menu widened, every roll dropped to 4:3: the sprocket strips jumped in to the 4:3
+border and both pages scrolled inside a 4:3 box, and the incoming page showed the outgoing page's content
+for most of the roll.
+
+**Cause (measured).** A temporary per-present log of the VI origin showed the Main Menu -> Race Type roll
+as 39 presents with the origin inside framebuffer `0x1DA800` at row offsets 6, 12 ... 234, none of them a
+framebuffer's start. `PresentQueue::threadPresent` looks a framebuffer up by its exact start address
+(`fbManager.find`); when that fails it uploads the RDRAM bytes at the origin into a native 320x240 scratch
+target. That picture is 4:3, and stale wherever RT64 had not written its render target back to RAM.
+
+**Fix** (`lib/rt64/src/hle/rt64_present_queue.cpp`). When the origin lies on a whole row inside a known
+framebuffer and another framebuffer starts where that one ends, the present builds the picture from the
+two **widescreen render targets**: the top page's resolved texture shifted up by the row offset, the
+bottom page's below it, copied into a composite texture with the same size and resolution scale, and handed
+to the VI renderer. `BAR_NO_ROLL_COMPOSE=1` restores the RDRAM upload.
+
+**First roll.** On the first Title -> Main Menu roll RT64 has no framebuffer at `0x1DA800` at all (it knows
+`0x3DA800` and `0x200000`); the game put the outgoing page there without RT64 drawing it (inferred). The
+fallback: when no framebuffer contains the origin but one starts a whole number of rows below it, that is
+the bottom page, and the top page is the render target most recently presented at another address.
+
+**Verified:** `BAR_SHOT_BURST` of the roll: widescreen throughout, strips stay at the frame edges, the
+incoming page is current; Daniel's playtest. The incoming page still shows the outgoing page's menu text
+early in the roll, exactly as the old 4:3 roll did, so that is the framebuffer's own content. Still open: a
+one-present flash of the destination page just before the roll starts.

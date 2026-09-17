@@ -202,6 +202,16 @@ namespace RT64 {
         }
 
         RenderTarget *colorTarget = nullptr;
+
+        // BAR film roll: when the VI origin lies inside a known framebuffer (BAR's menu transition pans
+        // the origin through two stacked 320x240 pages), present a composite of the two render targets
+        // instead of uploading the RDRAM bytes, which are native 4:3 and partly stale. See the branch
+        // below and docs/HUD-INSPECTOR.md "Film-roll transition". BAR_NO_ROLL_COMPOSE=1 turns it off.
+        RenderTarget *barRollTop = nullptr;
+        static uint32_t barRollRecentExact[2] = { 0, 0 };
+        RenderTarget *barRollBottom = nullptr;
+        uint32_t barRollRowOffset = 0;
+        uint32_t barRollNativeHeight = 0;
         int32_t framesToPresent = 1;
         bool lockedWorkloadMutex = false;
         InterpolatedFrameCounters &frameCounters = ext.sharedResources->interpolatedFrames[ext.sharedResources->interpolatedFramesIndex];
@@ -232,7 +242,7 @@ namespace RT64 {
             }
 
             Framebuffer *presentFb = viFb;
-            
+
             // Show the framebuffer the debugger has requested instead.
             if (present.debuggerFramebuffer.view) {
                 Framebuffer *candidateFb = fbManager.find(present.debuggerFramebuffer.address);
@@ -242,6 +252,13 @@ namespace RT64 {
             }
             
             if ((presentFb != nullptr) && (viFb != nullptr)) {
+                // BAR film roll: the most recent framebuffers presented at an exact origin, newest
+                // first, so a roll whose outgoing page RT64 never drew at its RDRAM address can still
+                // find that page's render target (see the fallback below).
+                if (barRollRecentExact[0] != viFb->addressStart) {
+                    barRollRecentExact[1] = barRollRecentExact[0];
+                    barRollRecentExact[0] = viFb->addressStart;
+                }
                 for (uint32_t colorAddress : ext.sharedResources->colorImageAddressVector) {
                     Framebuffer *colorFb = fbManager.find(colorAddress);
                     if (colorFb == nullptr) {
@@ -306,6 +323,97 @@ namespace RT64 {
             else {
                 uint32_t fbAddress = present.screenVI.fbAddress();
 
+                // BAR film roll (see the declaration of barRollTop). Find the framebuffer whose image
+                // contains the origin on a whole row, and the framebuffer that starts where it ends.
+                static const bool barRollComposeEnabled = (std::getenv("BAR_NO_ROLL_COMPOSE") == nullptr);
+                if (barRollComposeEnabled && !viewRDRAM) {
+                    for (auto &entry : fbManager.framebuffers) {
+                        Framebuffer &topFb = entry.second;
+                        const uint32_t rowBytes = topFb.imageRowBytes(topFb.width);
+                        if ((rowBytes == 0) || (topFb.height == 0) || (fbAddress <= topFb.addressStart) || (fbAddress >= topFb.addressEnd) ||
+                            (((fbAddress - topFb.addressStart) % rowBytes) != 0))
+                        {
+                            continue;
+                        }
+
+                        Framebuffer *bottomFb = fbManager.find(topFb.addressEnd);
+                        if ((bottomFb == nullptr) || (bottomFb->width != topFb.width) || (bottomFb->siz != topFb.siz)) {
+                            continue;
+                        }
+
+                        RenderTarget &topTarget = targetManager.get(RenderTargetKey(topFb.addressStart, topFb.width, topFb.siz, Framebuffer::Type::Color), true);
+                        RenderTarget &bottomTarget = targetManager.get(RenderTargetKey(bottomFb->addressStart, bottomFb->width, bottomFb->siz, Framebuffer::Type::Color), true);
+                        if (topTarget.isEmpty() || bottomTarget.isEmpty() || (topTarget.width != bottomTarget.width) ||
+                            (topTarget.height != bottomTarget.height) || (topTarget.format != bottomTarget.format) ||
+                            (topTarget.downsampleMultiplier > 1) || (bottomTarget.downsampleMultiplier > 1))
+                        {
+                            continue;
+                        }
+
+                        barRollTop = &topTarget;
+                        barRollBottom = &bottomTarget;
+                        barRollRowOffset = (fbAddress - topFb.addressStart) / rowBytes;
+                        barRollNativeHeight = topFb.height;
+                        break;
+                    }
+                }
+
+                // Fallback: no known framebuffer contains the origin, but one starts a whole number of rows
+                // below it -- the incoming page. The outgoing page was never drawn by RT64 at its RDRAM
+                // address: on the first title -> Main Menu roll RT64 knows only 0x003DA800 and 0x00200000
+                // while the origin pans from 0x001DA800 (measured with a temporary per-present VI origin log); the game put the
+                // title page there itself (inferred). Use the most recently presented other page instead.
+                if (barRollComposeEnabled && !viewRDRAM && (barRollTop == nullptr)) {
+                    for (auto &entry : fbManager.framebuffers) {
+                        Framebuffer &bottomFb = entry.second;
+                        const uint32_t rowBytes = bottomFb.imageRowBytes(bottomFb.width);
+                        if ((rowBytes == 0) || (bottomFb.height == 0) || (bottomFb.addressStart <= fbAddress) ||
+                            (((bottomFb.addressStart - fbAddress) % rowBytes) != 0) ||
+                            (((bottomFb.addressStart - fbAddress) / rowBytes) >= bottomFb.height))
+                        {
+                            continue;
+                        }
+
+                        uint32_t topAddress = 0;
+                        for (uint32_t recent : barRollRecentExact) {
+                            if ((recent != 0) && (recent != bottomFb.addressStart)) {
+                                topAddress = recent;
+                                break;
+                            }
+                        }
+
+                        Framebuffer *topFb = (topAddress != 0) ? fbManager.find(topAddress) : nullptr;
+                        if ((topFb == nullptr) || (topFb->width != bottomFb.width) || (topFb->siz != bottomFb.siz) || (topFb->height != bottomFb.height)) {
+                            continue;
+                        }
+
+                        RenderTarget &topTarget = targetManager.get(RenderTargetKey(topFb->addressStart, topFb->width, topFb->siz, Framebuffer::Type::Color), true);
+                        RenderTarget &bottomTarget = targetManager.get(RenderTargetKey(bottomFb.addressStart, bottomFb.width, bottomFb.siz, Framebuffer::Type::Color), true);
+                        if (topTarget.isEmpty() || bottomTarget.isEmpty() || (topTarget.width != bottomTarget.width) ||
+                            (topTarget.height != bottomTarget.height) || (topTarget.format != bottomTarget.format) ||
+                            (topTarget.downsampleMultiplier > 1) || (bottomTarget.downsampleMultiplier > 1))
+                        {
+                            continue;
+                        }
+
+                        barRollTop = &topTarget;
+                        barRollBottom = &bottomTarget;
+                        barRollRowOffset = bottomFb.height - ((bottomFb.addressStart - fbAddress) / rowBytes);
+                        barRollNativeHeight = bottomFb.height;
+                        break;
+                    }
+                }
+
+                if (barRollTop != nullptr) {
+                    lockedWorkloadMutex = true;
+                    ext.sharedResources->workloadMutex.lock();
+                    colorTarget = barRollTop;
+                    if (!present.paused && (viHistory.top().vi != present.screenVI)) {
+                        viHistory.pushVI(present.screenVI, present.screenVI.fbSize().x);
+                    }
+                }
+                else {
+
                 // Use a scratch framebuffer to upload the RAM to the render target.
                 hlslpp::uint2 fbSize = present.screenVI.fbSize();
                 scratchFb.addressStart = fbAddress;
@@ -339,6 +447,7 @@ namespace RT64 {
 
                 if (!present.paused && (viHistory.top().vi != present.screenVI)) {
                     viHistory.pushVI(present.screenVI, fbSize.x);
+                }
                 }
             }
         }
@@ -448,6 +557,45 @@ namespace RT64 {
                         renderParams.texture = colorTarget->getResolvedTexture();
                         renderParams.textureWidth = colorTarget->width;
                         renderParams.textureHeight = colorTarget->height;
+
+                        // BAR film roll: top page shifted up by the origin's row offset, bottom page below it.
+                        if ((barRollTop != nullptr) && (colorTarget == barRollTop) && (barRollNativeHeight > 0)) {
+                            barRollBottom->resolveTarget(ext.presentGraphicsWorker, ext.shaderLibrary);
+                            static std::unique_ptr<RenderTexture> barRollTexture;
+                            static uint32_t barRollTextureWidth = 0, barRollTextureHeight = 0;
+                            static RenderFormat barRollTextureFormat = RenderFormat::UNKNOWN;
+                            if ((barRollTexture == nullptr) || (barRollTextureWidth != colorTarget->width) ||
+                                (barRollTextureHeight != colorTarget->height) || (barRollTextureFormat != colorTarget->format))
+                            {
+                                barRollTexture = ext.device->createTexture(RenderTextureDesc::Texture2D(colorTarget->width, colorTarget->height, 1, colorTarget->format));
+                                barRollTexture->setName("BAR Film Roll Composite");
+                                barRollTextureWidth = colorTarget->width;
+                                barRollTextureHeight = colorTarget->height;
+                                barRollTextureFormat = colorTarget->format;
+                            }
+
+                            const uint32_t w = colorTarget->width;
+                            const uint32_t h = colorTarget->height;
+                            const uint32_t split = std::min(h, uint32_t((uint64_t(barRollRowOffset) * h + barRollNativeHeight / 2) / barRollNativeHeight));
+                            RenderTexture *topTexture = barRollTop->getResolvedTexture();
+                            RenderTexture *bottomTexture = barRollBottom->getResolvedTexture();
+                            RenderTextureBarrier copyBarriers[] = {
+                                RenderTextureBarrier(barRollTexture.get(), RenderTextureLayout::COPY_DEST),
+                                RenderTextureBarrier(topTexture, RenderTextureLayout::COPY_SOURCE),
+                                RenderTextureBarrier(bottomTexture, RenderTextureLayout::COPY_SOURCE)
+                            };
+                            commandList->barriers(RenderBarrierStage::COPY, copyBarriers, uint32_t(std::size(copyBarriers)));
+                            if (split < h) {
+                                const RenderBox topBox(0, int32_t(split), int32_t(w), int32_t(h));
+                                commandList->copyTextureRegion(RenderTextureCopyLocation::Subresource(barRollTexture.get()), RenderTextureCopyLocation::Subresource(topTexture), 0, 0, 0, &topBox);
+                            }
+                            if (split > 0) {
+                                const RenderBox bottomBox(0, 0, int32_t(w), int32_t(split));
+                                commandList->copyTextureRegion(RenderTextureCopyLocation::Subresource(barRollTexture.get()), RenderTextureCopyLocation::Subresource(bottomTexture), 0, h - split, 0, &bottomBox);
+                            }
+                            commandList->barriers(RenderBarrierStage::GRAPHICS, RenderTextureBarrier(barRollTexture.get(), RenderTextureLayout::SHADER_READ));
+                            renderParams.texture = barRollTexture.get();
+                        }
                     }
                 }
                 
