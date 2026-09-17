@@ -219,6 +219,36 @@ namespace RT64 {
             // persp#0DB8F095: a 3D layer, tagged Center by Daniel. Center is already the default for a
             // perspective layer, so this changes nothing unless that default does.
             { "persp#0DB8F095", Class::Center },
+
+            // Promoted 17 Sep 2026 (after the pause-flicker fix), from hud.json: 26 texture tags, unnamed.
+            // tex: identities are texture addresses with no content hash; if one ever pins an element on a
+            // screen it was not tagged on, that is the first thing to suspect.
+            { "tex:0x0040C8C8", Class::Center },
+            { "tex:0x00414760", Class::Center },
+            { "tex:0x00417CE0", Class::Center },
+            { "tex:0x0040E500", Class::Center },
+            { "tex:0x00418600", Class::Center },
+            { "tex:0x003841E8", Class::Center },
+            { "tex:0x0040F8C8", Class::Center },
+            { "tex:0x004129A0", Class::Center },
+            { "tex:0x004194E0", Class::Center },
+            { "tex:0x0040E238", Class::Center },
+            { "tex:0x00412630", Class::Center },
+            { "tex:0x00411AC0", Class::Center },
+            { "tex:0x0040FD00", Class::Center },
+            { "tex:0x00414580", Class::Center },
+            { "tex:0x004135D8", Class::Center },
+            { "tex:0x0040ADA0", Class::Center },
+            { "tex:0x0040CC28", Class::Center },
+            { "tex:0x0040E9E8", Class::Center },
+            { "tex:0x00409DF8", Class::Center },
+            { "tex:0x0041B408", Class::Center },
+            { "tex:0x00419478", Class::Center },
+            { "tex:0x00406028", Class::Center },
+            { "tex:0x00411688", Class::Center },
+            { "tex:0x0040DB08", Class::Center },
+            { "tex:0x004184B0", Class::Center },
+            { "tex:0x00408E50", Class::Center },
         };
 
         static bool builtinTag(const char *identity, const char *secondIdentity, Class *outClass) {
