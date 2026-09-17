@@ -2,9 +2,9 @@
 // an access violation, walks the faulting thread's stack via DbgHelp (needs beetle-adventure-racing-recomp.pdb next to the exe)
 // and prints symbol names to stderr. Used to locate where the cooperative-preemption yield faults.
 //
-// Windows-only: this uses DbgHelp + SetUnhandledExceptionFilter, which have no portable equivalent.
-// CMake compiles this TU on every platform, so the whole body is guarded — on non-Windows it becomes
-// an empty object, and main.cpp only calls bar_install_crash_handler() under #ifdef _WIN32.
+// Windows uses DbgHelp + SetUnhandledExceptionFilter. Linux has its own handler below (a fatal-signal
+// handler printing backtrace_symbols_fd offsets for addr2line). Other platforms get an empty object, and
+// main.cpp calls bar_install_crash_handler() only on Windows and Linux.
 #ifdef _WIN32
 #include <cstdio>
 #include <windows.h>

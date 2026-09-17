@@ -14,8 +14,10 @@ behind [Zelda 64: Recompiled](https://github.com/Zelda64Recomp/Zelda64Recomp).
 > resume. The reverse-engineering and porting reference is
 > **[docs/technical/](docs/technical/README.md)**.
 >
-> A prebuilt Windows x64 build is on the
-> **[releases page](https://github.com/danielgomesvieira2000/beetle-adventure-racing-recomp/releases)**.
+> **Current release: v0.3.0-alpha** (Windows x64) — rumble, widescreen HUD and menu fixes. Get it
+> from the **[releases page](https://github.com/danielgomesvieira2000/beetle-adventure-racing-recomp/releases)**.
+> A Linux build is in progress (it compiles, but crashes during boot; see
+> [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md)).
 
 > **No game data is included.** You must supply your own legally-dumped USA ROM
 > (SHA-1 `e5ab4d226c08d22f68a2edcc48870203e67454b8`). No ROM, assets, or other copyrighted
