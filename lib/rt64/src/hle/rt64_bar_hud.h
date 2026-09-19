@@ -156,6 +156,25 @@ namespace RT64 {
         // compensation instead, which is a separate lever at the same call site.
         uint16_t viewportOriginFor(Class cls);
 
+        // Whether a projection drawn into `inter` (its scissor intersected with its viewport) covers
+        // enough of its framebuffer pair's scissor `fbScissor` to be widened. The projection
+        // processor (which widens the matrix) and the framebuffer renderer (which widens the
+        // viewport and scissor) MUST both ask this one function: when they disagreed, the sky was
+        // widened and then clipped straight back to 4:3.
+        //
+        // Three ways to qualify, in order:
+        //   1. Upstream's strict test: `inter` spans the pair's scissor from edge to edge.
+        //   2. BAR_ASPECT_COVER (default 80): it covers that percentage of the pair's width. BAR's
+        //      racing viewport is inset for a CRT (275/320) and clamped to sScreenWidth - 1, so it
+        //      never passes the strict test.
+        //   3. A split-screen tile, for perspective projections only: half the pair's width (45-55 %)
+        //      and touching its left or right edge (1 px tolerance). The pair's scissor is the union
+        //      of everything drawn in it, and in BAR's 4-player battle player four's view shares its
+        //      pair with the full-screen HUD pass drawn straight after it: 160 against 320, 50 %, so
+        //      it stayed 4:3 while the other three -- each alone in its pair -- were widened.
+        //      BAR_SPLIT_TILE=0 turns this off for A/B.
+        bool coversForWidening(bool perspective, const FixedRect &inter, const FixedRect &fbScissor);
+
         // End of a display list, which is where the list of elements the inspector shows is
         // published. Called from State::advanceWorkload.
         void endFrame();

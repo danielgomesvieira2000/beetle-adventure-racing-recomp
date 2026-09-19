@@ -125,36 +125,11 @@ namespace {
                 }
 
                 if (!intersectionRect.isEmpty()) {
-                    bool coversWholeWidth = (intersectionRect.ulx <= fbPair.scissorRect.ulx) && (intersectionRect.lrx >= fbPair.scissorRect.lrx);
-
-                    // BAR: a game that insets its 3D viewport never satisfies the strict test above,
-                    // and so never gets widescreen.
-                    //
-                    // BAR draws racing into a 275x207 rectangle inset at (22,17) -- a CRT
-                    // overscan-safe area -- while the framebuffer's own scissor stays 0..320. The
-                    // strict test asks the projection to reach the framebuffer's edges, so 22 <= 0
-                    // is false, the projection is left unwidened, and Expand appears to do nothing
-                    // during a race while still working on menus, whose 2D content does use the
-                    // full width. Accepting a projection that covers most of the width fixes that.
-                    //
-                    // BAR_ASPECT_COVER is the percentage of the framebuffer width a projection must
-                    // cover to qualify. BAR's racing viewport covers 275/320 = 86%, so the default is
-                    // 80; set it to 100 to restore the strict upstream test.
-                    if (!coversWholeWidth) {
-                        static const int coverPercent = [] {
-                            const char *e = std::getenv("BAR_ASPECT_COVER");
-                            int parsed = 0;
-                            if ((e != nullptr) && (sscanf(e, "%d", &parsed) == 1) && (parsed > 0) && (parsed <= 100)) {
-                                return parsed;
-                            }
-                            return 80;
-                        }();
-                        if (coverPercent < 100) {
-                            const int32_t fbWidth = fbPair.scissorRect.width(true, true);
-                            const int32_t interWidth = intersectionRect.width(true, true);
-                            coversWholeWidth = (fbWidth > 0) && ((int64_t(interWidth) * 100) >= (int64_t(fbWidth) * coverPercent));
-                        }
-                    }
+                    // BAR: upstream's strict edge-to-edge test, BAR's inset racing viewport and its
+                    // split-screen tiles are all decided in one place, shared with the framebuffer
+                    // renderer's matching test -- see BarHud::coversForWidening.
+                    const bool coversWholeWidth = BarHud::coversForWidening(proj.type == Projection::Type::Perspective,
+                        intersectionRect, fbPair.scissorRect);
 
                     bool horizontalRatio = (intersectionRect.width(true, true) > intersectionRect.height(true, true));
                     adjustAspectRatio = (viewportOrigin == G_EX_ORIGIN_NONE) && coversWholeWidth && horizontalRatio;

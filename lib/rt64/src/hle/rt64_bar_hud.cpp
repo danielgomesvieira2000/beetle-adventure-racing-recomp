@@ -661,6 +661,50 @@ namespace RT64 {
                 return G_EX_ORIGIN_NONE;
             }
         }
+
+        bool coversForWidening(bool perspective, const FixedRect &inter, const FixedRect &fbScissor) {
+            if (inter.isEmpty()) {
+                return false;
+            }
+
+            if ((inter.ulx <= fbScissor.ulx) && (inter.lrx >= fbScissor.lrx)) {
+                return true;
+            }
+
+            const int32_t fbWidth = fbScissor.width(true, true);
+            const int32_t interWidth = inter.width(true, true);
+            if (fbWidth <= 0) {
+                return false;
+            }
+
+            static const int coverPercent = [] {
+                const char *e = std::getenv("BAR_ASPECT_COVER");
+                int parsed = 0;
+                if ((e != nullptr) && (sscanf(e, "%d", &parsed) == 1) && (parsed > 0) && (parsed <= 100)) {
+                    return parsed;
+                }
+                return 80;
+            }();
+            if ((coverPercent < 100) && ((int64_t(interWidth) * 100) >= (int64_t(fbWidth) * coverPercent))) {
+                return true;
+            }
+
+            static const bool splitTile = [] {
+                const char *e = std::getenv("BAR_SPLIT_TILE");
+                return (e == nullptr) || (e[0] == '\0') || (e[0] != '0');
+            }();
+            if (splitTile && perspective) {
+                const bool halfWidth = ((int64_t(interWidth) * 100) >= (int64_t(fbWidth) * 45)) &&
+                    ((int64_t(interWidth) * 100) <= (int64_t(fbWidth) * 55));
+                const bool atLeft = inter.left(true) <= (fbScissor.left(true) + 1);
+                const bool atRight = inter.right(true) >= (fbScissor.right(true) - 1);
+                if (halfWidth && (atLeft || atRight)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 };
 

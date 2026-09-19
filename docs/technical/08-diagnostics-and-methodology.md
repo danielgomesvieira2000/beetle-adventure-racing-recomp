@@ -210,6 +210,7 @@ report still gives module+offset, which resolves offline.
 | `BAR_AUDIO_XFORM=<0-3>` | 2 | Sample transform: 0 as-is, 1 byteswap, **2 channel-swap (correct)**, 3 both |
 | `BAR_SKIP_WIDE=<px>` *(RT64 fork)* | off | Drop textured rectangles at least that wide — a probe for "which element is made of wide texture rectangles" |
 | `BAR_ASPECT_COVER` *(RT64 fork)* | — | The coverage threshold at which a projection is widened |
+| `BAR_SPLIT_TILE=0` *(RT64 fork)* | — | Stop treating half-width perspective views at a side edge as split-screen tiles (4P player four stays 4:3) |
 
 Historical variables appear in `KNOWN_ISSUES.md` and other investigation notes (`BAR_TIME_SCALE`,
 `BAR_VI_DIVIDER`, `BAR_NO_REWRITE`, the display-list rewriter's switches). Those belong to parked or

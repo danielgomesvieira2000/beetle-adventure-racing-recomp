@@ -284,8 +284,8 @@ dummy byte is `CONT_CMD_NOP` (`0xFF`).
 Measured with `BAR_DBG_PAK=1`, pad as player one and keyboard as player two, one 2P race:
 `short STATUS port=1 -> pak=1` (115 times), `osPfsInitPak` reads of the id blocks 1/3/4/6 on port
 one returning zeros, the identify handshake (`0xFE` then `0x80`), then 70 motor-on writes to port
-one. Only `mempak_p0.pak` exists afterwards. Ports two and three (players three and four) use the
-same code at skip counts 2 and 3; see `docs/KNOWN_ISSUES.md` for whether that has been exercised.
+one. Only `mempak_p0.pak` exists afterwards. Players three and four (skip counts 2 and 3) were
+verified in a 4-player battle with all ports on the keyboard; see `docs/KNOWN_ISSUES.md`.
 
 ### Player assignment, and the two local changes to RecompFrontend
 

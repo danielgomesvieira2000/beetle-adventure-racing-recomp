@@ -5,15 +5,17 @@ Add the negative results, not just the leads — they are the expensive part.
 
 ---
 
-## OPEN -- Players three and four: input and Rumble Pak not yet exercised
+## RESOLVED -- Players three and four: input and Rumble Pak
 
-Two players are verified in play (2026-09-19: pad as player one, keyboard as player two, one 2P
-race; the port-two pak trace is in [05](technical/05-runtime-host.md#multiplayer-every-route-asks-bar_port_connected-and-bar_port_pak)).
-Players three and four go through the same code, with one difference that has not run: the
-short-format status query for port N carries N leading `0x00` skip bytes, and only N = 0 and 1 have
-been seen. If that decoding were wrong, players three and four would still steer but their Rumble
-Paks would not be detected. The 3P/4P split-screen (viewports, widescreen HUD placement, frame
-rate) has not been looked at either.
+Verified 2026-09-19 in the headless build with all four ports on the keyboard (a seeded `input.json`,
+ports 1-3 `RumblePak`), `BAR_DBG_PAK=1`, one 4-player battle driven by hand: all four cars respond;
+`short STATUS port=0..3 -> pak=1`; ports 2 and 3 run the same Rumble Pak detection as port 1 (id
+blocks 1/3/4/6 read zeros, identify handshake); motor-on writes per port 860 / 356 / 584 / 823; no
+`mempak_p1..3.pak` created. Two players were verified earlier the same day in the launcher build
+(pad + keyboard, see [05](technical/05-runtime-host.md#multiplayer-every-route-asks-bar_port_connected-and-bar_port_pak)).
+
+Still open for split-screen: the 2D layer (health bars, dividers) -- see
+[06, open items](technical/06-graphics.md#open-graphics-items).
 
 ---
 

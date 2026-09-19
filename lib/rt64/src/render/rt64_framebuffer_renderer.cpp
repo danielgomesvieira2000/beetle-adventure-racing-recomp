@@ -1540,31 +1540,14 @@ namespace {
                 // The call's scissor spans the whole width of the framebuffer pair scissor. Custom origin must not be in use to be able to use the stretched viewport.
                 const auto &viewport = drawData.rspViewports[proj.transformsIndex];
                 FixedRect intersectionRect = proj.scissorRect.intersection(viewport.rect(viewportClipRatios));
-                bool coversWholeWidth = !intersectionRect.isEmpty() && (intersectionRect.ulx <= fbPair.scissorRect.ulx) && (intersectionRect.lrx >= fbPair.scissorRect.lrx);
-
-                // BAR: this must use the SAME coverage test as the projection processor, which widens
-                // the projection matrix (see BAR_ASPECT_COVER there). When the two disagree the
-                // projection is widened but its viewport and scissor are not, so the wider view is
-                // squeezed back into the original 4:3 rectangle and clipped there -- which is what
-                // made BAR's sky end at the un-widened frame's edges while the world filled the
-                // widened one. BAR's viewport is clamped to sScreenWidth - 1, so its racing
-                // projection measures 319 against a 320-wide framebuffer scissor and fails the strict
-                // test by a single pixel.
-                if (!coversWholeWidth && !intersectionRect.isEmpty()) {
-                    static const int coverPercent = [] {
-                        const char *e = std::getenv("BAR_ASPECT_COVER");
-                        int parsed = 0;
-                        if ((e != nullptr) && (sscanf(e, "%d", &parsed) == 1) && (parsed > 0) && (parsed <= 100)) {
-                            return parsed;
-                        }
-                        return 80;
-                    }();
-                    if (coverPercent < 100) {
-                        const int32_t fbScissorWidth = fbPair.scissorRect.width(true, true);
-                        const int32_t interWidth = intersectionRect.width(true, true);
-                        coversWholeWidth = (fbScissorWidth > 0) && ((int64_t(interWidth) * 100) >= (int64_t(fbScissorWidth) * coverPercent));
-                    }
-                }
+                // BAR: this must be the SAME test as the projection processor's, which widens the
+                // projection matrix. When the two disagree the projection is widened but its
+                // viewport and scissor are not, so the wider view is squeezed back into the original
+                // 4:3 rectangle and clipped there -- which is what made BAR's sky end at the
+                // un-widened frame's edges while the world filled the widened one. Both ask
+                // BarHud::coversForWidening.
+                const bool coversWholeWidth = BarHud::coversForWidening(proj.type == Projection::Type::Perspective,
+                    intersectionRect, fbPair.scissorRect);
                 bool horizontalRatio = !intersectionRect.isEmpty() && (intersectionRect.width(true, true) > intersectionRect.height(true, true));
                 bool useWideViewport = (viewportOrigin == G_EX_ORIGIN_NONE) && coversWholeWidth && horizontalRatio;
                 if (useWideViewport) {

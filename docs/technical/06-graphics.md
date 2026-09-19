@@ -339,7 +339,26 @@ back into the old rectangle and clipped there, so the sky ended at the edges of 
 frame, fixed on screen whatever the camera did.
 
 **Whenever a test like this exists twice, they must be the same test.** The fix was to give the
-framebuffer renderer the same threshold.
+framebuffer renderer the same threshold. Both now call one function, `BarHud::coversForWidening`
+(`lib/rt64/src/hle/rt64_bar_hud.cpp`), so they cannot drift apart again.
+
+### Split-screen tiles
+
+The coverage test measures a projection against its **framebuffer pair's** scissor, which is the
+union of everything drawn in that pair, not against the screen. In BAR's 4-player battle that made
+one player's view different from the other three. Measured with `BAR_DBG_PROJ=1` and
+`BAR_DBG_SCISSOR=1`: the four 3D views are 160 px wide (scissors `(0,0)-(160,121)`,
+`(159,0)-(320,121)`, `(0,120)-(160,240)`, `(159,120)-(320,240)`), and players one to three each sit
+alone in a pair whose scissor is their own quarter (160/161/160 wide), so they cover 100 % and are
+widened. Player four shares its pair with the full-screen 2D pass drawn straight after it
+(`(0,0)-(320,240)`), measures 160 against 320 = 50 %, and was left 4:3 -- its view ended at the old
+frame's right edge (x 1680 of a 1920 window) with stale framebuffer content beyond it.
+
+`coversForWidening` therefore has a third rule: a **perspective** projection that is half its pair's
+width (45-55 %) and touches the pair's left or right edge (1 px tolerance) is a split-screen tile and
+is widened. After it, all four views read `covers=1 -> widen=1` on every frame and fill the window
+(verified by eye, 2026-09-19). Orthographic layers are excluded so HUD classification is unchanged.
+`BAR_SPLIT_TILE=0` restores the previous behaviour for A/B.
 
 The general form of this trap: **any experiment that widens a projection matrix without widening its
 viewport and scissor together is worthless**, because the layer is drawn wider and clipped straight
@@ -398,8 +417,10 @@ Negative, and worth keeping so nobody pays for them again:
 * The **results screen** has not been checked with anchoring on. Finishing a race takes minutes, so
   its state and `raceState` were never measured; if it runs as state 5 / phase 0 its 2D layout will
   be anchored like the HUD, which is probably wrong for it.
-* **Split screen** has not been checked. Classification measures every rectangle against the whole
-  320-wide screen, so a two-player HUD drawn inside a half-screen viewport is classified against the
-  wrong reference. Both the bands and the per-viewport reference need revisiting before 2P.
+* **Split-screen HUD** has not been fixed. The 3D views fill the window (see "Split-screen tiles"
+  above), but classification measures every 2D rectangle against the whole 320-wide screen, so a HUD
+  drawn inside a half-screen viewport is classified against the wrong reference. In the 4-player
+  battle the health bars stay inside the 4:3 area and the black dividers between the views stop at
+  the old frame's width.
 * The **pause menu's dimming panel** covers only the centred 4:3 region, leaving the widened margins
   undimmed. It is a 2D rectangle in the middle band, so anchoring does not touch it.
