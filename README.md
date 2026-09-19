@@ -14,7 +14,7 @@ behind [Zelda 64: Recompiled](https://github.com/Zelda64Recomp/Zelda64Recomp).
 > resume. The reverse-engineering and porting reference is
 > **[docs/technical/](docs/technical/README.md)**.
 >
-> **Current release: v0.4.0-alpha** (Windows x64) — multiplayer for up to four players, split-screen widescreen, results-screen fixes. Get it
+> **Current release: v0.4.1-alpha** (Windows x64) — Mount Mayhem's fog restored and a Metro Madness view glitch fixed, on top of 0.4.0's multiplayer. Get it
 > from the **[releases page](https://github.com/danielgomesvieira2000/beetle-adventure-racing-recomp/releases)**.
 > A Linux build is in progress (it compiles, but crashes during boot; see
 > [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md)).

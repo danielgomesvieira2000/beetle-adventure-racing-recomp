@@ -135,7 +135,7 @@ static RspUcodeFunc* get_rsp_microcode(const OSTask* task) {
 // ----------------------------------------------------------------------------------------
 // Project metadata / game registration
 // ----------------------------------------------------------------------------------------
-static const std::string version_string = "0.4.0-alpha";   // shown in the launcher as v0.4.0-alpha; bump per release
+static const std::string version_string = "0.4.1-alpha";   // shown in the launcher as v0.4.1-alpha; bump per release
 
 // TODO(BAR): rom_hash is XXH3_64bits() of the byteswapped *z64* ROM — NOT the sha1.
 //   Known USA sha1 = e5ab4d226c08d22f68a2edcc48870203e67454b8. Compute the XXH3-64 of the
