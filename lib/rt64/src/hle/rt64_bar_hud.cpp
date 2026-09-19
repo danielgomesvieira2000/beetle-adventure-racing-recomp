@@ -65,6 +65,17 @@ namespace RT64 {
             return enabled;
         }
 
+        // BAR_HUD_TRACE=2 prints EVERY distinct rectangle once, centred ones included, with its kind
+        // and both identities -- the element list of a screen the inspector is awkward to read on,
+        // such as the four-player battle, whose one 2D layer holds every player's HUD.
+        static bool traceAll() {
+            static const bool enabled = [] {
+                const char *value = std::getenv("BAR_HUD_TRACE");
+                return (value != nullptr) && (value[0] == '2');
+            }();
+            return enabled;
+        }
+
         void setRacing(bool racing) {
             if (traceEnabled()) {
                 static int last = -1;
@@ -449,16 +460,19 @@ namespace RT64 {
                     int(cls), kind);
             }
 
-            if ((cls != Class::Center) && traceEnabled()) {
+            if (((cls != Class::Center) || traceAll()) && traceEnabled()) {
                 static std::set<uint64_t> seen;
-                const uint64_t key =
+                uint64_t key =
                     (uint64_t(uint16_t(rect.ulx)) << 48) | (uint64_t(uint16_t(rect.uly)) << 32) |
                     (uint64_t(uint16_t(rect.lrx)) << 16) | uint64_t(uint16_t(rect.lry));
-                if (seen.insert(key).second && (seen.size() <= 2000)) {
-                    static const char *names[] = { "center", "left", "right", "stretch", "spill" };
-                    fprintf(stdout, "[hud] %s px=(%.1f,%.1f)-(%.1f,%.1f) -> %s%s\n", identity,
-                        rect.ulx / 4.0f, rect.uly / 4.0f, rect.lrx / 4.0f, rect.lry / 4.0f,
-                        names[int(cls)], tagged ? " (tagged)" : "");
+                for (const char *c = identity; *c != '\0'; c++) {
+                    key = (key * 1099511628211ull) ^ uint8_t(*c);
+                }
+                if (seen.insert(key).second && (seen.size() <= 4000)) {
+                    static const char *names[] = { "center", "left", "right", "stretch", "spill", "cover" };
+                    fprintf(stdout, "[hud] %s %s %s px=(%.1f,%.1f)-(%.1f,%.1f) state=%u -> %s%s\n", kind,
+                        identity, secondIdentity, rect.ulx / 4.0f, rect.uly / 4.0f, rect.lrx / 4.0f,
+                        rect.lry / 4.0f, gameState(), names[int(cls)], tagged ? " (tagged)" : "");
                     fflush(stdout);
                 }
             }
@@ -660,6 +674,36 @@ namespace RT64 {
                 // individual rectangle is -- and is treated as Center.
                 return G_EX_ORIGIN_NONE;
             }
+        }
+
+        bool snapSplitDivider(int32_t screenWidth, uint32_t fillColor, int32_t &ulx, int32_t &uly,
+            int32_t &lrx, int32_t &lry)
+        {
+            static const bool enabled = envFlag("BAR_SPLIT_DIVIDERS", true);
+            if (!enabled || (screenWidth != 320) || (fillColor != 0x00010001)) {
+                return false;
+            }
+
+            // Quarter pixels. The inset is x 22..297 and y 16..223, and a fill rectangle's lower-right
+            // corner arrives as the last pixel (297.x / 223.x) or one past it (298 / 224), so both are
+            // accepted.
+            constexpr int32_t kThin = 2 * 4;
+            const int32_t pxUlx = ulx >> 2, pxLrx = lrx >> 2, pxUly = uly >> 2, pxLry = lry >> 2;
+            const bool horizontalLine = ((lry - uly) <= kThin) && (pxUlx == 22) && ((pxLrx == 297) || (pxLrx == 298));
+            const bool verticalLine = ((lrx - ulx) <= kThin) && (pxUly == 16) && ((pxLry == 223) || (pxLry == 224));
+            if (horizontalLine) {
+                ulx = 0;
+                lrx = (320 << 2) - 1;
+                return true;
+            }
+
+            if (verticalLine) {
+                uly = 0;
+                lry = (240 << 2) - 1;
+                return true;
+            }
+
+            return false;
         }
 
         bool coversForWidening(bool perspective, const FixedRect &inter, const FixedRect &fbScissor) {

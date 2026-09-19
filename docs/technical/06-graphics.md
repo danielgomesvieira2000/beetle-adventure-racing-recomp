@@ -342,6 +342,26 @@ frame, fixed on screen whatever the camera did.
 framebuffer renderer the same threshold. Both now call one function, `BarHud::coversForWidening`
 (`lib/rt64/src/hle/rt64_bar_hud.cpp`), so they cannot drift apart again.
 
+### Split-screen dividers
+
+The black lines between the split-screen views are two fill-cycle rectangles in fill colour
+`0x00010001`, drawn at the overscan inset. Measured with `BAR_HUD_TRACE=2` in a 4-player battle:
+horizontal `(22,119)-(298,121)`, vertical `(159,16)-(161,224)`. Once the views reached the frame's
+edges, the lines visibly stopped short of them.
+
+`BarHud::snapSplitDivider`, called from `RDP::fillRect`, applies the viewport patch's rule to them: a
+black fill line at most 2 px thick whose ends sit on the inset (x 22 and 297/298, or y 16 and
+223/224) is extended to the screen's edges. The horizontal line then spans the whole 320-wide
+screen, and RT64 stretches every full-width fill across the widened frame, so it reaches both window
+edges without anything else. Only a 320-wide colour image qualifies. Verified by eye in the 4-player
+battle (2026-09-19). `BAR_SPLIT_DIVIDERS=0` turns it off.
+
+**Why not a tag.** A fill rectangle's identity is its fill colour, and `fill:0x00010001` is every black
+fill in the game, so tagging it would move all of them. The game code that draws the lines is in the
+unmatched split-screen modules and was not found in the time boxed for it: the constants `0x16` /
+`0x129` (22 / 297) appear only in the colour-bars, victory and demo modules, which pass the inset
+rectangle to a graphics call.
+
 ### Split-screen tiles
 
 The coverage test measures a projection against its **framebuffer pair's** scissor, which is the
@@ -417,10 +437,11 @@ Negative, and worth keeping so nobody pays for them again:
 * The **results screen** has not been checked with anchoring on. Finishing a race takes minutes, so
   its state and `raceState` were never measured; if it runs as state 5 / phase 0 its 2D layout will
   be anchored like the HUD, which is probably wrong for it.
-* **Split-screen HUD** has not been fixed. The 3D views fill the window (see "Split-screen tiles"
-  above), but classification measures every 2D rectangle against the whole 320-wide screen, so a HUD
-  drawn inside a half-screen viewport is classified against the wrong reference. In the 4-player
-  battle the health bars stay inside the 4:3 area and the black dividers between the views stop at
-  the old frame's width.
+* **Split-screen HUD** is not anchored. The 3D views and the dividers fill the window (see above),
+  but the per-player HUD stays inside the 4:3 area. In the 4-player battle
+  (`BAR_HUD_TRACE=2`) the ladybug icons beside each health bar are textured rectangles with the
+  same six textures for every player (x 32..48 for players one and three, 272..288 for two and
+  four), and the health bars themselves are not rectangles at all: they are geometry in the battle's
+  single orthographic layer, which RT64 can only place as a whole.
 * The **pause menu's dimming panel** covers only the centred 4:3 region, leaving the widened margins
   undimmed. It is a 2D rectangle in the middle band, so anchoring does not touch it.

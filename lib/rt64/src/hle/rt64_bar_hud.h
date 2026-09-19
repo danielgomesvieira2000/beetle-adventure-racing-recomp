@@ -175,6 +175,22 @@ namespace RT64 {
         //      BAR_SPLIT_TILE=0 turns this off for A/B.
         bool coversForWidening(bool perspective, const FixedRect &inter, const FixedRect &fbScissor);
 
+        // BAR's split-screen dividers, extended to the frame's edges. Called from RDP::fillRect with
+        // the rectangle in RDP quarter-pixel coordinates, before it is recorded; adjusts it in place
+        // and returns true when it did.
+        //
+        // The dividers between the split-screen views are two thin black fill-cycle rectangles drawn
+        // at BAR's overscan inset, measured (BAR_HUD_TRACE=2, 4-player battle) at (22,119)-(298,121)
+        // and (159,16)-(161,224). The views themselves reach the frame's edges -- patches/
+        // viewport_patch.c snaps their inset edges, RT64 widens them -- so the dividers stopped
+        // short of them. This snaps the same four inset edges on a line at most 2 px thick, the
+        // same rule the viewport patch applies to viewports. A horizontal divider then spans the
+        // whole 320-wide screen, which RT64 already stretches across the widened frame, as it does
+        // every full-width fill. Only black (0x00010001) lines on a 320-wide colour image qualify.
+        // BAR_SPLIT_DIVIDERS=0 turns it off for A/B.
+        bool snapSplitDivider(int32_t screenWidth, uint32_t fillColor, int32_t &ulx, int32_t &uly,
+            int32_t &lrx, int32_t &lry);
+
         // End of a display list, which is where the list of elements the inspector shows is
         // published. Called from State::advanceWorkload.
         void endFrame();

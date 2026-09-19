@@ -193,6 +193,7 @@ report still gives module+offset, which resolves offline.
 | `BAR_AUDIO_DBG=1` | Peak sample magnitude and saturation count |
 | `BAR_AUDIO_CAPTURE=<path>` | Dump the raw untransformed received audio stream (~16 MB cap) for offline analysis with no device open |
 | `BAR_HUD_TRACE=1` | Game state, race flag, whether anchoring is armed, and every 2D rectangle with the identity and class it was given. **Prefer the HUD inspector** (F1) — see below |
+| `BAR_HUD_TRACE=2` | As `1`, but prints every distinct rectangle once **including centred ones**, with its kind (`fill`/`tex`/`untex`), both identities and the game state. How the 4-player battle HUD was listed |
 | `BAR_HUD_COVER_INSET="l,t,r,b"` | The overscan-safe rectangle the `cover` class magnifies to the frame's edges; default `22,17,296,223`. Dial a backdrop in without a rebuild |
 | `BAR_INSPECTOR=0` | Turns the port's half of the F1 debug menu off, for an A/B against the fork's own classification. RT64's half stays on F1 either way, and `hud.json` tags still apply |
 | `BAR_DBG_RECT=1` *(RT64 fork)* | Every **distinct** 2D rectangle in framebuffer pixels, with cycle type, texturing, fill colour, scissor and framebuffer width |
@@ -211,6 +212,7 @@ report still gives module+offset, which resolves offline.
 | `BAR_SKIP_WIDE=<px>` *(RT64 fork)* | off | Drop textured rectangles at least that wide — a probe for "which element is made of wide texture rectangles" |
 | `BAR_ASPECT_COVER` *(RT64 fork)* | — | The coverage threshold at which a projection is widened |
 | `BAR_SPLIT_TILE=0` *(RT64 fork)* | — | Stop treating half-width perspective views at a side edge as split-screen tiles (4P player four stays 4:3) |
+| `BAR_SPLIT_DIVIDERS=0` *(RT64 fork)* | — | Leave the split-screen divider lines at the overscan inset instead of extending them to the frame's edges |
 
 Historical variables appear in `KNOWN_ISSUES.md` and other investigation notes (`BAR_TIME_SCALE`,
 `BAR_VI_DIVIDER`, `BAR_NO_REWRITE`, the display-list rewriter's switches). Those belong to parked or

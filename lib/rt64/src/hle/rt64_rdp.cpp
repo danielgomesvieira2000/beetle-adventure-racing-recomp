@@ -1075,6 +1075,11 @@ namespace RT64 {
             lry |= 3;
         }
 
+        // BAR: the split-screen dividers are drawn at the overscan inset; reach the frame's edges.
+        if (mode == G_CYC_FILL) {
+            BarHud::snapSplitDivider(colorImage.width, fillColorStack[fillColorStackSize - 1], ulx, uly, lrx, lry);
+        }
+
         drawRect(ulx, uly, lrx, lry, 0, 0, 0, 0, false, extAlignment);
     }
 
