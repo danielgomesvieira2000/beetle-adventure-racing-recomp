@@ -23,10 +23,15 @@
 #include <cstring>  // BAR_BURST_ON_ROLL: memcpy/strchr/strcmp for the burst-capture spec parse
 
 #include "main/bar_cheats.h"   // bar_cheats::apply_frame (host-side RDRAM cheat pokes)
-#include "main/bar_input.hpp"  // bar::input::{port_connected, port_pak} (per-port SI responses)
+#include "main/bar_input.hpp"  // bar::input::mempak_{read,write} (per-port Controller Pak store)
 
 // Per-port input resolution lives in main.cpp / bar_input (they own the Win32 window / focus + SDL).
 extern "C" uint16_t bar_poll_keyboard(int port, int8_t* stick_x, int8_t* stick_y);
+// Which ports are occupied and what accessory each holds (main.cpp). Ask these, never bar::input
+// directly: in the frontend build bar::input knows no pads, so ports two to four would answer the
+// joybus NO_RESPONSE however many controllers are plugged in and assigned.
+bool bar_port_connected(int port);
+bar::input_config::PakType bar_port_pak(int port);
 // A motor start/stop written to a port's Rumble Pak (main.cpp): feeds the motor model and the build's rumble sink.
 extern "C" void bar_pak_motor(int port, bool on);
 
@@ -188,7 +193,7 @@ static void bar_handle_pak(uint8_t* rdram, int64_t fb, int port, unsigned cmd) {
     const unsigned addr  = ((unsigned)(uint8_t)MEM_BU(4, fb) << 8) | (uint8_t)MEM_BU(5, fb);
     const int      block = (int)(addr >> 5);
     const bool     is_write = (cmd == 3);
-    const bar::input_config::PakType pak = bar::input::port_pak(port);
+    const bar::input_config::PakType pak = bar_port_pak(port);
 
     uint8_t data[32];
     if (is_write) {
@@ -227,8 +232,14 @@ static void bar_handle_pak(uint8_t* rdram, int64_t fb, int port, unsigned cmd) {
                 std::memset(data, kRumbleIdentify, 32);
         }
     } else if (block < kBlockDetect) {
-        if (is_write) bar::input::mempak_write(port, block, data);
-        else          bar::input::mempak_read(port, block, data);
+        // Only a Controller Pak has a data area. A port holding just a Rumble Pak (players two to
+        // four) answers the way the real accessory does -- zeros, writes ignored -- so BAR's
+        // osPfsInitPak finds no filesystem there, its classifier falls through to the motor probe,
+        // and no mempak_pN.pak is created for a port that has no save pak.
+        if (pak == bar::input_config::PakType::ControllerPak) {
+            if (is_write) bar::input::mempak_write(port, block, data);
+            else          bar::input::mempak_read(port, block, data);
+        }
     } else if (block == kBlockRumble && bar_rumble_pak_enabled()) {
         if (is_write) {
             bar_pak_motor(port, data[0] != 0);   // main.cpp: motor model, then the build's own sink
@@ -238,7 +249,6 @@ static void bar_handle_pak(uint8_t* rdram, int64_t fb, int port, unsigned cmd) {
         }
     }
     // Blocks between the data area and the accessory region are out of range: leave zero.
-    (void)pak;
 
     if (bar_dbg_pak()) {
         std::fprintf(stderr, "[BAR_DBG_PAK] %s port=%d addr=0x%04X block=0x%X pak=%d data[0..3]=%02X%02X%02X%02X\n",
@@ -476,20 +486,41 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
         // untouched — the game then reports the pak unusable ("error creating game note"). Answer it
         // here, and route short-format READ_PAK/WRITE_PAK through the same handler by passing a base
         // one byte earlier, which realigns its dummy-relative offsets (addr@4,5 -> 3,4; data@6 -> 5).
+        //
+        // The status query is per port: __osPfsRequestOneChannel writes one 0x00 skip byte per channel
+        // before it ("00 01 03 00 ..." is port two). Only channel 0 used to be recognised, so ports two
+        // to four read back the 0xFF placeholders -- CARD_ON together with ADDR_CRC_ER, which
+        // __osPfsGetStatus reports as PFS_ERR_CONTRFAIL -- and their Rumble Paks were never found.
+        // Count the skip bytes to find the port. The 8-byte button/status blocks cannot be mistaken
+        // for this: their dummy byte is CONT_CMD_NOP (0xFF), never 0x00.
+        {
+            int s_ch = 0;
+            while (s_ch < 3 && MEM_BU(s_ch, pifram_se) == 0x00) s_ch++;
+            const unsigned s_tx  = (unsigned)MEM_BU(s_ch + 0, pifram_se);
+            const unsigned s_rx  = (unsigned)MEM_BU(s_ch + 1, pifram_se);
+            const unsigned s_cmd = (unsigned)MEM_BU(s_ch + 2, pifram_se);
+
+            if (s_cmd == 0 && s_tx == 0x01 && s_rx == 0x03) {
+                if (bar_port_connected(s_ch)) {
+                    const bool has_pak = bar_port_pak(s_ch) != bar::input_config::PakType::None;
+                    MEM_B(s_ch + 3, pifram_se) = 0x05;                   // typeh
+                    MEM_B(s_ch + 4, pifram_se) = 0x00;                   // typel -> CONT_TYPE_NORMAL
+                    MEM_B(s_ch + 5, pifram_se) = has_pak ? (int8_t)0x01 : (int8_t)0x00;   // CONT_CARD_ON
+                    if (bar_dbg_pak()) std::fprintf(stderr, "[BAR_DBG_PAK] short STATUS port=%d -> pak=%d\n", s_ch, (int)has_pak);
+                } else {
+                    MEM_B(s_ch + 1, pifram_se) = (int8_t)(0x80 | 0x03);  // rxsize: CHNL NO_RESPONSE error
+                    if (bar_dbg_pak()) std::fprintf(stderr, "[BAR_DBG_PAK] short STATUS port=%d -> no controller\n", s_ch);
+                }
+                ultramodern::send_si_message();
+                return;
+            }
+        }
         {
             const unsigned s_tx  = (unsigned)MEM_BU(0, pifram_se);
             const unsigned s_rx  = (unsigned)MEM_BU(1, pifram_se);
             const unsigned s_cmd = (unsigned)MEM_BU(2, pifram_se);
-            const bool has_pak = bar::input::port_pak(0) != bar::input_config::PakType::None;
+            const bool has_pak = bar_port_pak(0) != bar::input_config::PakType::None;
 
-            if (s_cmd == 0 && s_tx == 0x01 && s_rx == 0x03 && bar::input::port_connected(0)) {
-                MEM_B(3, pifram_se) = 0x05;                              // typeh
-                MEM_B(4, pifram_se) = 0x00;                              // typel -> CONT_TYPE_NORMAL
-                MEM_B(5, pifram_se) = has_pak ? (int8_t)0x01 : (int8_t)0x00;   // CONT_CARD_ON
-                if (bar_dbg_pak()) std::fprintf(stderr, "[BAR_DBG_PAK] short STATUS -> pak=%d\n", (int)has_pak);
-                ultramodern::send_si_message();
-                return;
-            }
             if (((s_cmd == 2 && s_tx == 0x03 && s_rx == 0x21) ||         // READ_PAK
                  (s_cmd == 3 && s_tx == 0x23 && s_rx == 0x01)) && has_pak) {
                 bar_handle_pak(rdram, pifram_se - 1, 0, s_cmd);
@@ -526,7 +557,7 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
         }
 
         if (pak_ch >= 0) {
-            if (bar::input::port_pak(pak_ch) != bar::input_config::PakType::None) {
+            if (bar_port_pak(pak_ch) != bar::input_config::PakType::None) {
                 bar_handle_pak(rdram, pifram_se + pak_ch, pak_ch, pak_cmd);
             }
         } else {
@@ -537,12 +568,12 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
                 const int64_t blk = pifram_se + (int64_t)(i * 8);
                 const unsigned cmd = (unsigned)MEM_BU(3, blk);   // CONT_CMD_* the game packed
                 if (cmd != 0 && cmd != 1) continue;              // not status/button -> leave as-is
-                if (!bar::input::port_connected(i)) {            // unplugged / no device assigned
+                if (!bar_port_connected(i)) {            // unplugged / no device assigned
                     MEM_B(2, blk) = (int8_t)0x80;                // rxsize: CHNL NO_RESPONSE error
                     continue;
                 }
                 if (cmd == 0) {                  // CONT_CMD_REQUEST_STATUS (controller detect)
-                    const bool has_pak = bar::input::port_pak(i) != bar::input_config::PakType::None;
+                    const bool has_pak = bar_port_pak(i) != bar::input_config::PakType::None;
                     MEM_B(2, blk) = 0x03;        // rxsize=3, no channel error
                     MEM_B(4, blk) = 0x05;        // typeh  -> type = typel<<8|typeh = 0x0005 (CONT_TYPE_NORMAL)
                     MEM_B(5, blk) = 0x00;        // typel

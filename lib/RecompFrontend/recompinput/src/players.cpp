@@ -164,6 +164,12 @@ void players::auto_assign_controllers(SDL_GameController* const* controllers, si
 
     // The same profile assignment commit_player_assignment performs, so that a
     // player's own remapping follows its pad into whichever slot it lands in.
+    // Every slot's pair is reset first, so a keyboard that an earlier "Assign players" commit gave to
+    // player two does not stay on player two once this hands the slots out again.
+    for (int i = 0; i < (int)recompinput::max_num_players_supported; i++) {
+        profiles::set_input_profile_for_player(i, -1, InputDevice::Controller);
+        profiles::set_input_profile_for_player(i, -1, InputDevice::Keyboard);
+    }
     for (int i = 0; i < (int)PlayerState.players.get_count(); i++) {
         Player &player = PlayerState.players[i];
         if (player.controller != nullptr) {
@@ -171,8 +177,6 @@ void players::auto_assign_controllers(SDL_GameController* const* controllers, si
             if (cont_profile_index >= 0) {
                 profiles::set_input_profile_for_player(i, cont_profile_index, InputDevice::Controller);
             }
-        } else {
-            profiles::set_input_profile_for_player(i, profiles::get_or_create_mp_keyboard_profile_index(i), InputDevice::Keyboard);
         }
     }
 
@@ -193,16 +197,37 @@ void playerassignment::commit_player_assignment() {
     stop_and_close_modal();
 
     PlayerState.players = PlayerState.temp_players;
+
+    // Local change (Beetle Adventure Racing port): each player's profile pair is rebuilt from
+    // scratch, and the keyboard player uses the single-player keyboard profile.
+    //
+    // Upstream only ever SET the device a player was assigned, so whatever profile a player held
+    // before survived the commit. auto_assign_controllers gives player one the keyboard, and the
+    // keyboard is global state, so after assigning "pad = player 1, keyboard = player 2" the keys
+    // still drove player one. The keyboard player, meanwhile, was handed a per-player multiplayer
+    // keyboard profile, which is created with every binding cleared -- player two existed and
+    // pressed nothing. Only one keyboard player can be assigned (see process_sdl_event), so the
+    // overlap that clearing guards against cannot happen, and the single-player keyboard profile is
+    // the one with the defaults and the one the controls tab edits. If nobody takes the keyboard,
+    // player one keeps it, exactly as auto_assign_controllers does.
+    bool keyboard_taken = false;
+    for (int i = 0; i < players::get_number_of_assigned_players(); i++) {
+        keyboard_taken |= PlayerState.players[i].controller == nullptr;
+    }
     for (int i = 0; i < players::get_number_of_assigned_players(); i++) {
         Player &player = PlayerState.players[i];
+        int cont_profile_index = -1;
+        int kb_profile_index = -1;
         if (player.controller != nullptr) {
-            int cont_profile_index = profiles::get_controller_profile_index_from_sdl_controller(player.controller);
-            if (cont_profile_index >= 0) {
-                profiles::set_input_profile_for_player(i, cont_profile_index, InputDevice::Controller);
+            cont_profile_index = profiles::get_controller_profile_index_from_sdl_controller(player.controller);
+            if (i == 0 && !keyboard_taken) {
+                kb_profile_index = profiles::get_sp_keyboard_profile_index();
             }
         } else {
-            profiles::set_input_profile_for_player(i, profiles::get_or_create_mp_keyboard_profile_index(i), InputDevice::Keyboard);
+            kb_profile_index = profiles::get_sp_keyboard_profile_index();
         }
+        profiles::set_input_profile_for_player(i, cont_profile_index, InputDevice::Controller);
+        profiles::set_input_profile_for_player(i, kb_profile_index, InputDevice::Keyboard);
     }
 }
 

@@ -139,6 +139,12 @@ The script is kept as the record of what was changed and why — it is idempoten
 to do. See [05 — player assignment](technical/05-runtime-host.md#input-goes-through-recompinput) for
 why the port needs it.
 
+**`recompinput::playerassignment::commit_player_assignment` is locally changed too**
+(`recompinput/src/players.cpp`): it rebuilds every player's profile pair and gives the keyboard
+player the single-player keyboard profile, where upstream left player one holding the keyboard and
+gave the keyboard player an empty multiplayer profile. Re-apply it if RecompFrontend is ever
+re-vendored; see [05](technical/05-runtime-host.md#player-assignment-and-the-two-local-changes-to-recompfrontend).
+
 Four integration constraints, each of which broke the build once:
 
 1. **`BEETLE_ENABLE_UI` and `BEETLE_ENABLE_FRONTEND` are mutually exclusive.** RecompFrontend

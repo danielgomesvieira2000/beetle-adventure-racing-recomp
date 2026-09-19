@@ -607,11 +607,33 @@ static void set_frequency(uint32_t freq) {
 // are where the Controls tab's remapping lives. bar::input still exists in that build -- it owns the
 // Controller Pak and the per-port pak type -- but it has no pads, so asking it which ports are
 // occupied would answer "only the keyboard one", forever.
-static bool bar_port_connected(int port) {
+//
+// Both routes to the game ask this: the high-level callbacks below, and the raw SI/PIF stub in
+// os_unimpl_stubs.cpp -- which is the one BAR actually reads its pads through. That stub used to ask
+// bar::input directly, so in the frontend build a second pad was assigned to player two, polled
+// correctly, and never reached the game: port two answered the joybus with NO_RESPONSE.
+bool bar_port_connected(int port) {
 #ifdef BEETLE_ENABLE_FRONTEND
     return bar::frontend::port_assigned(port);
 #else
     return bar::input::port_connected(port);
+#endif
+}
+
+// The accessory in each port, asked by the same two routes as bar_port_connected.
+//
+// In the frontend build the answer is fixed rather than configured: port one holds the Controller
+// Pak (which this port serves together with a Rumble Pak on the same slot -- see bar_handle_pak), and
+// every other occupied port holds a Rumble Pak. Only port one saves; BAR keeps its records and
+// standings on player one's pak. The headless build keeps bar::input's per-port config.
+bar::input_config::PakType bar_port_pak(int port) {
+    if (!bar_port_connected(port)) {
+        return bar::input_config::PakType::None;
+    }
+#ifdef BEETLE_ENABLE_FRONTEND
+    return port == 0 ? bar::input::port_pak(0) : bar::input_config::PakType::RumblePak;
+#else
+    return bar::input::port_pak(port);
 #endif
 }
 
@@ -684,7 +706,7 @@ static ultramodern::input::connected_device_info_t input_get_device_info(int con
     // Pak::ControllerPak was added to the ultramodern fork for this: it reports the accessory as
     // present without osMotorInit accepting the port as a rumble device (it only accepts RumblePak).
     Pak pak = Pak::None;
-    switch (bar::input::port_pak(controller_num)) {
+    switch (bar_port_pak(controller_num)) {
         case bar::input_config::PakType::ControllerPak: pak = Pak::ControllerPak; break;
         case bar::input_config::PakType::RumblePak:     pak = Pak::RumblePak;     break;
         case bar::input_config::PakType::None:          pak = Pak::None;          break;

@@ -355,6 +355,23 @@ namespace {
 // scripts/patch-recompinput.py adds auto_assign_controllers; the modal still wins while it is open,
 // for anyone who wants to choose.
 void refresh_players() {
+    // Every device SDL enumerates, logged whenever the count changes, so a pad that never reaches
+    // `connected` below shows up with the reason -- no game-controller mapping, or an open that
+    // failed. One line per change; it is what tells "the game ignores player two" apart from
+    // "Windows is not connected to that pad".
+    {
+        static int last_count = -1;
+        const int count = SDL_NumJoysticks();
+        if (count != last_count) {
+            last_count = count;
+            std::fprintf(stderr, "[beetle-adventure-racing-recomp] SDL sees %d joystick%s\n", count, count == 1 ? "" : "s");
+            for (int i = 0; i < count; ++i) {
+                std::fprintf(stderr, "[beetle-adventure-racing-recomp]   #%d \"%s\" game_controller=%d\n",
+                             i, SDL_JoystickNameForIndex(i), (int)SDL_IsGameController(i));
+            }
+            std::fflush(stderr);
+        }
+    }
     std::vector<SDL_GameController*> connected;
     for (int i = 0; i < SDL_NumJoysticks(); ++i) {
         if (!SDL_IsGameController(i)) continue;
@@ -372,13 +389,25 @@ void refresh_players() {
     // alone is what breaks input entirely on a machine with no pad attached: an empty set matches an
     // empty set, so nothing is ever assigned, player one does not exist, and the game is told it has
     // no controller at all -- keyboard included.
+    //
+    // Each pad's controller profile is part of the comparison too. auto_assign_controllers gives a
+    // player the profile recompinput created for its pad when SDL reported it; a pad assigned before
+    // that profile existed would drive nothing -- player two present, its buttons mapped to nothing --
+    // and, with the pad set unchanged, would never be looked at again. Re-assigning once the profile
+    // appears closes that gap.
+    std::vector<int> pad_profiles;
+    for (SDL_GameController* pad : connected) {
+        pad_profiles.push_back(recompinput::profiles::get_controller_profile_index_from_sdl_controller(pad));
+    }
     static bool assigned_once = false;
     static std::vector<SDL_GameController*> assigned;
-    if (assigned_once && connected == assigned) {
+    static std::vector<int> assigned_profiles;
+    if (assigned_once && connected == assigned && pad_profiles == assigned_profiles) {
         return;
     }
     assigned_once = true;
     assigned = connected;
+    assigned_profiles = pad_profiles;
 
     recompinput::players::auto_assign_controllers(connected.data(), connected.size());
 
@@ -387,6 +416,10 @@ void refresh_players() {
                  connected.size(), connected.size() == 1 ? "" : "s",
                  recompinput::players::get_number_of_assigned_players(),
                  recompinput::players::get_number_of_assigned_players() == 1 ? "" : "s");
+    for (size_t i = 0; i < connected.size(); i++) {
+        std::fprintf(stderr, "[beetle-adventure-racing-recomp]   player %zu: %s (controller profile %d)\n",
+                     i + 1, SDL_GameControllerName(connected[i]), pad_profiles[i]);
+    }
     std::fflush(stderr);
 }
 

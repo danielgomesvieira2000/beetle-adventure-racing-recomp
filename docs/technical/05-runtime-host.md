@@ -236,7 +236,7 @@ includes a recompinput header:
 
 | Function | What it answers |
 |---|---|
-| `bar::frontend::port_assigned(port)` | Whether this N64 port has anything driving it. Port 0 always does; 1–3 once their pad is plugged in. |
+| `bar::frontend::port_assigned(port)` | Whether this N64 port has anything driving it. Port 0 always does; 1–3 once a player is assigned to them — a pad, in connection order, or the keyboard through "Assign players". |
 | `bar::frontend::poll_port(port, &sx, &sy)` | The port's live N64 button mask and stick, with the player's own bindings applied. |
 
 `profiles::get_n64_input` returns the stick normalised to [-1, 1] and already deadzoned; the bridge
@@ -247,10 +247,47 @@ are the hardware's, and identical to the `nbits` table in `src/game/input_config
 
 `bar::input` is **not** retired. It still owns the Controller Pak and the per-port pak type, which
 recompinput has no concept of, and it is still the whole input path in the headless build — where
-there is no recompinput to ask. `#ifdef BEETLE_ENABLE_FRONTEND` picks between them in three places:
-`bar_poll_keyboard`, `bar_port_connected` and `input_set_rumble`.
+there is no recompinput to ask. `#ifdef BEETLE_ENABLE_FRONTEND` picks between them in four places:
+`bar_poll_keyboard`, `bar_port_connected`, `bar_port_pak` and `input_set_rumble`.
 
-### Player assignment, and the one local change to RecompFrontend
+### Multiplayer: every route asks `bar_port_connected` and `bar_port_pak`
+
+Which ports exist, and which accessory each holds, is answered in one place — `bar_port_connected`
+and `bar_port_pak` in `main.cpp` — and asked by **both** routes to the game: the high-level
+ultramodern callbacks, and the raw SI stub in `os_unimpl_stubs.cpp`, which is the one BAR actually
+reads pads through.
+
+That second caller is the whole of the first multiplayer bug. The SI stub used to ask `bar::input`
+directly, and in the frontend build `bar::input` knows no pads, so its config said port 0 only. A
+second pad was assigned to player two, `poll_port(1)` returned its buttons correctly, and the game
+never asked for them: port two answered `REQUEST_STATUS` with `NO_RESPONSE`. The launcher showed two
+players; the game had one. Nothing on screen distinguishes that from a player assignment problem.
+
+In the frontend build the accessories are fixed rather than configured: **port 0 holds the Controller
+Pak** (served together with a Rumble Pak on the same slot, see [One slot, both
+accessories](#one-slot-both-accessories)), and **every other occupied port holds a Rumble Pak**. Only
+port 0 saves. The headless build keeps `bar::input`'s per-port config.
+
+A Rumble-Pak-only port answers the data area (`< 0x8000`) the way the real accessory does — zeros,
+writes dropped — so `osPfsInitPak` finds no filesystem, the uvcont classifier falls through to the
+motor probe, and no `mempak_pN.pak` is created for it.
+
+The status query needed a second fix to reach ports 1–3. `__osPfsRequestOneChannel` sends the
+short-format `REQUEST_STATUS` (`01 03 00 FF FF FF FE`) after **one `0x00` skip byte per channel**, so
+port two's is `00 01 03 00 …`. The stub recognised only channel 0; port two's query fell into the
+8-byte block loop, which read it as a port-0 status query and answered with port 0's pak bit, and
+ports three and four were left with the `0xFF` placeholders — `CARD_ON` together with
+`ADDR_CRC_ER`, which `__osPfsGetStatus` reports as `PFS_ERR_CONTRFAIL`. The stub now counts the
+leading zeros to find the port. The 8-byte button/status blocks cannot be mistaken for this: their
+dummy byte is `CONT_CMD_NOP` (`0xFF`).
+
+Measured with `BAR_DBG_PAK=1`, pad as player one and keyboard as player two, one 2P race:
+`short STATUS port=1 -> pak=1` (115 times), `osPfsInitPak` reads of the id blocks 1/3/4/6 on port
+one returning zeros, the identify handshake (`0xFE` then `0x80`), then 70 motor-on writes to port
+one. Only `mempak_p0.pak` exists afterwards. Ports two and three (players three and four) use the
+same code at skip counts 2 and 3; see `docs/KNOWN_ISSUES.md` for whether that has been exercised.
+
+### Player assignment, and the two local changes to RecompFrontend
 
 RecompFrontend assigns pads to players exactly one way: the Controls tab's "Assign players" button
 opens a modal and each player presses a button on the pad they want. Until someone has been through
@@ -265,6 +302,31 @@ presses. Player one also keeps the single-player keyboard profile, which `get_n6
 the controller profile, so the keys and the pad both play without either having to be chosen. The
 patch refuses to run while a manual assignment is open, so the modal still wins for anyone who wants
 to choose.
+
+`refresh_players` (`src/frontend/bar_frontend.cpp`) re-runs it whenever the set of open pads **or
+any pad's controller profile index** changes, and logs every device SDL enumerates (with
+`game_controller=0/1`) and each player's pad and profile. A pad without an SDL game-controller
+mapping never reaches the list at all; the log says so.
+
+**Keyboard as a player (second local change, `commit_player_assignment`).** Upstream's commit only
+*set* the profile for the device a player was assigned, so whatever a player held before survived.
+Two consequences, both measured in `controls.json` and in play with pad = player one, keyboard =
+player two:
+
+* Player one kept the single-player keyboard profile that `auto_assign_controllers` gave it. The
+  keyboard is global state, so the keys still drove player one.
+* The keyboard player was handed a per-player multiplayer keyboard profile, which upstream creates
+  with every binding cleared (`keyboard_mp_player_1`: 0 bindings, against 24 in `keyboard_sp`).
+  Player two existed and pressed nothing.
+
+The commit now rebuilds every player's profile pair from scratch: the keyboard player gets the
+single-player keyboard profile (the one with the defaults and the one the Controls tab edits), no
+other player gets a keyboard profile, and if nobody took the keyboard player one keeps it.
+`auto_assign_controllers` likewise clears every slot's pair before handing them out, so a keyboard a
+dialog gave to player two does not stay there after a pad is plugged in. Only one keyboard player can
+exist (`process_sdl_event` refuses a second), so the overlap the cleared multiplayer profiles guard
+against cannot occur. The dialog's assignment is not persisted: each launch starts from
+`auto_assign_controllers` again.
 
 It was written as a script — `scripts/patch-recompinput.py` — because RecompFrontend was a submodule
 at the time, and `git submodule update` reverted the change silently, after which the build failed to

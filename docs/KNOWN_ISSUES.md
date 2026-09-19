@@ -5,6 +5,18 @@ Add the negative results, not just the leads — they are the expensive part.
 
 ---
 
+## OPEN -- Players three and four: input and Rumble Pak not yet exercised
+
+Two players are verified in play (2026-09-19: pad as player one, keyboard as player two, one 2P
+race; the port-two pak trace is in [05](technical/05-runtime-host.md#multiplayer-every-route-asks-bar_port_connected-and-bar_port_pak)).
+Players three and four go through the same code, with one difference that has not run: the
+short-format status query for port N carries N leading `0x00` skip bytes, and only N = 0 and 1 have
+been seen. If that decoding were wrong, players three and four would still steer but their Rumble
+Paks would not be detected. The 3P/4P split-screen (viewports, widescreen HUD placement, frame
+rate) has not been looked at either.
+
+---
+
 ## OPEN -- The game freezes leaving the results screen: the audio manager spins in `alEvtqNextEvent`
 
 **Measured 2026-09-19, on a live frozen process** (0.3.0-alpha + watchdog build, pid 11212, frozen
