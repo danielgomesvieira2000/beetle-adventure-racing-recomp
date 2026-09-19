@@ -214,8 +214,11 @@ namespace RT64 {
             { "tex:0x00376330", Class::Left },
 
             // Promoted 17 Sep 2026 (third pass). fill:0xFFFCFFFC was moved from Center to Left while fixing
-            // the speedometer.
-            { "fill:0xFFFCFFFC", Class::Left },
+            // the speedometer. Moved back to Center on 19 Sep 2026: Daniel's hud.json had it Center, and
+            // hud.json beats this table, so Center is what every playtest since had (1P, 2P and the
+            // 4-player battle all signed off). A bare colour, not an element -- first suspect if a
+            // screen shows a misplaced flat rectangle.
+            { "fill:0xFFFCFFFC", Class::Center },
 
             // Promoted 17 Sep 2026 (content identities). Projection layers are named by what they draw
             // (<kind>#<hash> of the layer's first draw call, see classifyProjection), no longer by their
@@ -332,6 +335,64 @@ namespace RT64 {
             { "tex:0x001C0440", Class::Stretch },
             { "tex:0x001BFB08", Class::Stretch },
             { "tex:0x001C1EA8", Class::Stretch },
+
+            // Promoted 19 Sep 2026, from hud.json (52 entries, in the file's order within each class).
+            // Unnamed: the inspector session did not record what each element is. tex: identities are
+            // texture addresses with no content hash (see the note on the 17 Sep pass above).
+            { "tex:0x0041D230", Class::Center },
+            { "tex:0x00419A38", Class::Center },
+            { "tex:0x004037D8", Class::Center },
+            { "tex:0x00405508", Class::Center },
+            { "tex:0x0041B768", Class::Center },
+            { "tex:0x00412850", Class::Center },
+            { "tex:0x003C9D38", Class::Center },
+            { "tex:0x0041C350", Class::Center },
+            { "tex:0x00417A38", Class::Center },
+            { "tex:0x00416048", Class::Center },
+            { "tex:0x00414B40", Class::Center },
+            { "tex:0x004198C0", Class::Center },
+            { "tex:0x003CDF58", Class::Center },
+            { "tex:0x00415168", Class::Center },
+            { "tex:0x00407390", Class::Center },
+            { "tex:0x0041B6D0", Class::Center },
+            { "tex:0x00404560", Class::Center },
+            { "tex:0x0040ED48", Class::Center },
+            { "tex:0x004189E0", Class::Center },
+            { "tex:0x00409150", Class::Center },
+            { "tex:0x003D6D68", Class::Center },
+            { "tex:0x00411EF0", Class::Center },
+            { "tex:0x003D9680", Class::Center },
+            { "tex:0x003D8A98", Class::Center },
+            { "tex:0x0040CDB8", Class::Center },
+            { "tex:0x00410428", Class::Center },
+            { "tex:0x003BF8F8", Class::Center },
+            { "tex:0x003D7AF0", Class::Center },
+            { "tex:0x00408270", Class::Center },
+            { "tex:0x003C8A50", Class::Center },
+            { "tex:0x003BBB90", Class::Center },
+            { "tex:0x00411010", Class::Center },
+            { "tex:0x00416950", Class::Center },
+            { "tex:0x0041A7F0", Class::Center },
+            { "tex:0x0040EAB8", Class::Center },
+            { "tex:0x00413CB0", Class::Center },
+            { "tex:0x003B9870", Class::Center },
+            { "tex:0x0040D2B0", Class::Center },
+            { "tex:0x00411EA0", Class::Center },
+            { "tex:0x0040E258", Class::Center },
+            { "tex:0x0041E5D8", Class::Center },
+            { "tex:0x0041C648", Class::Center },
+            { "tex:0x004100E0", Class::Center },
+            { "tex:0x00412D80", Class::Center },
+            { "tex:0x000DC630", Class::Center },
+            { "tex:0x000DF620", Class::Center },
+            { "tex:0x003B3FA0", Class::Center },
+            { "tex:0x003BBDB8", Class::Center },
+            { "tex:0x003D7CF0", Class::Stretch },
+            // persp#F6D3F6D5: a 3D layer Daniel tagged Cover. A perspective layer's identity can change
+            // when its first draw call does (docs/HUD-INSPECTOR.md), so check it if the effect stops.
+            // tex:0x00172830 is a rectangle: Cover acts only on projections, so for it this is Center.
+            { "persp#F6D3F6D5", Class::Cover },
+            { "tex:0x00172830", Class::Cover },
         };
 
         static bool builtinTag(const char *identity, const char *secondIdentity, Class *outClass) {
