@@ -185,9 +185,20 @@ accident.
   0-1): the sky geometry starts two rows down. This is not new — it was there before, hidden under
   the overscan mask's 17-row top bar — but it is visible now that the mask is gone.
 * ~~**Culling at the new margins**~~ -- done; see "The frustum BAR draws and culls against" above.
-* **The results screen has not been checked** with anchoring on. Finishing a race takes minutes, so
-  the state and `raceState` it runs in were never measured; if it turns out to be `state 5` with
-  `raceState 0` its 2D layout will be anchored like the HUD, which is probably wrong for it.
+* ~~**The results screens**~~ -- fixed 2026-09-19. They run as `currentGameState 5` with `raceState 0`,
+  the same pair as a running race, so the positional rule anchored them: "New Record" and "You set a
+  new track record!" split into pieces and row 5 was thrown to both edges; the post-race save
+  screen's dark panel stayed at 4:3. Two more fields now gate the racing flag
+  (`src/main/os_unimpl_stubs.cpp`), both measured with a temporary logger over `gGameSettings`:
+  `introReplayState` (`+0x9C`, s16) is 0 through loading, countdown and race and non-zero while the
+  results screens play the race replay behind them (and in the attract sequence); and the per-car
+  bytes at `+0x98` are `01010101` from loading and clear one by one as the cars finish, before the
+  replay starts -- the race result screen sits in that gap. The HUD is anchored only while no replay
+  is playing and a human player's byte (the first `numPlayers`, `+0x24`) is set. Which byte is which
+  car is **inferred** (byte 0 cleared first in a race Daniel won), not decoded. The replay's own
+  countdown and race phases (3, then 0) are why `raceState` alone could not tell them apart.
+  Verified by eye: race HUD unchanged, race result, results and save screens intact.
+  `BAR_HUD_TRACE` now prints `replay=` and `cars=` with every state change.
 * **Split screen has not been checked.** Classification measures every rectangle against the whole
   320-wide screen, so a two-player HUD drawn inside a half-screen viewport will be classified against
   the wrong reference. The bands and the per-viewport reference both need revisiting before 2P.

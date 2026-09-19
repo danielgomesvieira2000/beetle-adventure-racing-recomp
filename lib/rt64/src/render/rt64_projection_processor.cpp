@@ -120,8 +120,9 @@ namespace {
                         (uint64_t(uint16_t(int(maxX))) << 16) | uint64_t(uint16_t(int(maxY))) ^
                         (uint64_t(call.callDesc.triangleCount) << 40) ^ (uint64_t(BarHud::gameState()) << 56);
                     if (seen.insert(key).second && (seen.size() <= 4000)) {
-                        fprintf(stdout, "[hud-ortho] proj=%u call=%u tris=%u tex=%d screen=(%.1f,%.1f)-(%.1f,%.1f) state=%u\n",
-                            unsigned(sceneProj.projectionIndex), c, unsigned(call.callDesc.triangleCount), int(call.callDesc.textureOn),
+                        fprintf(stdout, "[hud-ortho] %s class=%d proj=%u call=%u tris=%u tex=%d screen=(%.1f,%.1f)-(%.1f,%.1f) state=%u\n",
+                            BarHud::lastProjectionIdentity(), int(orthoClass), unsigned(sceneProj.projectionIndex), c,
+                            unsigned(call.callDesc.triangleCount), int(call.callDesc.textureOn),
                             minX, minY, maxX, maxY, unsigned(BarHud::gameState()));
                         fflush(stdout);
                     }

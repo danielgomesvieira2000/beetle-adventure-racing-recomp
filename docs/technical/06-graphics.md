@@ -451,9 +451,21 @@ Negative, and worth keeping so nobody pays for them again:
 * A 6-pixel band of flat background colour along the very top of a race frame (framebuffer rows 0-1):
   the sky geometry starts two rows down. Not new — it was always there, hidden under the overscan
   mask's 17-row top bar.
-* The **results screen** has not been checked with anchoring on. Finishing a race takes minutes, so
-  its state and `raceState` were never measured; if it runs as state 5 / phase 0 its 2D layout will
-  be anchored like the HUD, which is probably wrong for it.
+* ~~**The results screens**~~ -- fixed 2026-09-19. They run as `currentGameState 5` with `raceState 0`,
+  the same pair as a running race, so the positional rule anchored them: "New Record" and "You set a
+  new track record!" split into pieces and row 5 was thrown to both edges; the post-race save
+  screen's dark panel stayed at 4:3. Two more fields now gate the racing flag
+  (`src/main/os_unimpl_stubs.cpp`), both measured with a temporary logger over `gGameSettings`:
+  `introReplayState` (`+0x9C`, s16) is 0 through loading, countdown and race and non-zero while the
+  results screens play the race replay behind them (and in the attract sequence); and the per-car
+  bytes at `+0x98` are `01010101` from loading and clear one by one as the cars finish, before the
+  replay starts -- the race result screen sits in that gap. The HUD is anchored only while no replay
+  is playing and a human player's byte (the first `numPlayers`, `+0x24`) is set. Which byte is which
+  car is **inferred** (byte 0 cleared first in a race Daniel won), not decoded. The replay's own
+  countdown and race phases (3, then 0) are why `raceState` alone could not tell them apart.
+  Verified by eye: race HUD unchanged, race result, results and save screens intact.
+  `BAR_HUD_TRACE` now prints `replay=` and `cars=` with every state change.
+  Full account in `docs/RACING_DRAW_MAP.md`.
 * **Split-screen HUD beyond the 4-player battle's bars** has not been checked: 2- and 3-player
   battles, split-screen races, and a one-off flat overlay seen once across player four's quarter
   (x 158..297, y 120..224, untextured -- probably a hit flash), which is drawn to the overscan inset

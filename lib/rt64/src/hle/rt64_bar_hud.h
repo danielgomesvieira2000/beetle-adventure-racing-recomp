@@ -202,6 +202,10 @@ namespace RT64 {
         // BAR_HUD_TRACE=2: the full element listing (see rt64_bar_hud.cpp).
         bool traceAllEnabled();
 
+        // The identity the last classifyProjection call on this thread computed, for traces that
+        // run straight after it (the projection processor's [hud-ortho] listing).
+        const char *lastProjectionIdentity();
+
         bool snapSplitDivider(int32_t screenWidth, uint32_t fillColor, int32_t &ulx, int32_t &uly,
             int32_t &lrx, int32_t &lry);
 

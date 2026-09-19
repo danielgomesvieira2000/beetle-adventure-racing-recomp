@@ -109,6 +109,8 @@ namespace RT64 {
             return sGameState.load(std::memory_order_relaxed);
         }
 
+        const char *&lastIdentityPtr();
+
         // Identities promoted out of somebody's hud.json and into the build.
         //
         // This is the intended end of a tag's life. hud.json is where an element is IDENTIFIED, in
@@ -630,6 +632,7 @@ namespace RT64 {
             const FixedRect &scissor = proj.scissorRect;
 
             char identity[24];
+            static thread_local char sLastIdentity[24];
             std::snprintf(identity, sizeof(identity), "%s#%08X", prefix,
                 projectionContentHash(proj, callTiles, callTileCount));
 
@@ -665,10 +668,14 @@ namespace RT64 {
             // BAR_HUD_TRACE: each distinct orthographic identity once per racing/paused state, with its
             // call count, extent and class, so a scripted run can show an element keeping its identity
             // across courses and screens.
+            std::memcpy(sLastIdentity, identity, sizeof(sLastIdentity));
+            lastIdentityPtr() = sLastIdentity;
             if (publish && traceEnabled() && (kind == ProjKind::Orthographic)) {
                 static std::set<uint64_t> seenProj;
-                const uint64_t key = (uint64_t(std::strtoul(identity + std::strlen(prefix) + 1, nullptr, 16)) << 2) |
-                    uint64_t(racing() ? 1 : 0) | (uint64_t(paused() ? 1 : 0) << 1);
+                // The game state is part of the key: the save screen after a race has the same racing
+                // and paused flags as the pre-race course overview, so its layers were never printed.
+                const uint64_t key = (uint64_t(std::strtoul(identity + std::strlen(prefix) + 1, nullptr, 16)) << 8) |
+                    (uint64_t(gameState() & 0x3F) << 2) | uint64_t(racing() ? 1 : 0) | (uint64_t(paused() ? 1 : 0) << 1);
                 if (seenProj.insert(key).second && (seenProj.size() <= 2000)) {
                     fprintf(stdout, "[hud-proj] %s calls=%u scissor=(%.1f,%.1f)-(%.1f,%.1f) racing=%d paused=%d class=%d\n",
                         identity, proj.gameCallCount, scissor.ulx / 4.0f, scissor.uly / 4.0f, scissor.lrx / 4.0f,
@@ -766,6 +773,15 @@ namespace RT64 {
                 // individual rectangle is -- and is treated as Center.
                 return G_EX_ORIGIN_NONE;
             }
+        }
+
+        const char *&lastIdentityPtr() {
+            static thread_local const char *ptr = "";
+            return ptr;
+        }
+
+        const char *lastProjectionIdentity() {
+            return lastIdentityPtr();
         }
 
         bool traceAllEnabled() {

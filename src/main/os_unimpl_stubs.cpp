@@ -372,10 +372,13 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
         const int32_t paused = (int32_t)MEM_H(0X86, GS);      // pauseFlag
         static const bool trace = std::getenv("BAR_HUD_TRACE") != nullptr;
         if (trace) {
-            static int32_t lastS = -0x7FFF, lastR = -0x7FFF, lastP = -0x7FFF;
-            if ((st != lastS) || (phase != lastR) || (paused != lastP)) {
-                lastS = st; lastR = phase; lastP = paused;
-                std::fprintf(stdout, "[hud] state=%d racePhase=%d paused=%d\n", st, phase, paused);
+            static int32_t lastS = -0x7FFF, lastR = -0x7FFF, lastP = -0x7FFF, lastRp = -0x7FFF, lastCars = 0x7FFF;
+            const int32_t rp = (int32_t)MEM_H(0X9C, GS);          // introReplayState
+            const int32_t cars = (int32_t)MEM_W(0X98, GS);        // per-car "still racing" bytes (inferred)
+            if ((st != lastS) || (phase != lastR) || (paused != lastP) || (rp != lastRp) || (cars != lastCars)) {
+                lastS = st; lastR = phase; lastP = paused; lastRp = rp; lastCars = cars;
+                std::fprintf(stdout, "[hud] state=%d racePhase=%d paused=%d replay=%d cars=%08X players=%d\n", st, phase,
+                             paused, rp, (unsigned)cars, (int)MEM_W(0X24, GS));
                 std::fflush(stdout);
             }
         }
@@ -393,7 +396,28 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
             sawSetup = true;
         }
 
-        bar_rt64_set_hud_anchor(((st == 5) && sawSetup && ((phase == 0) || (phase == 3))) ? 1 : 0);
+        // The results screen is state 5 / raceState 0 as well -- the same pair as a running race --
+        // because it plays a replay of the race behind it, and the replay runs the race's own
+        // countdown and race phases again (3, then 0). Anchoring it pulled the results layout apart:
+        // "New Record" and "You set a new track record!" split into pieces, row 5 thrown to both
+        // edges. introReplayState (+0x9C, s16) is what tells them apart. Measured 2026-09-19 with a
+        // logger over gGameSettings (BAR_DBG_GS, removed): 0 through loading, countdown and race;
+        // 0 -> 1 when the results screen appears, and 1 throughout it; 1 and 2 in the attract
+        // sequence, which is also a replay. So: no HUD anchoring while a replay is playing.
+        const int32_t replay = (int32_t)MEM_H(0X9C, GS);      // introReplayState
+        //
+        // The race result screen comes BEFORE the replay starts, so it needs a second condition. The
+        // same logger showed gGameSettings + 0x98 set to 01010101 during loading, then clearing one
+        // byte at a time as the race ends (00010101, then 00000000), and only after that did the
+        // replay flag rise. Inferred, not decoded: one "still racing" byte per car, byte N being
+        // player N+1 -- byte 0 cleared first in a race Daniel won. So the HUD is anchored while any
+        // human player (the first numPlayers bytes, numPlayers at +0x24) is still racing.
+        const int32_t numPlayers = (int32_t)MEM_W(0X24, GS);
+        bool humanRacing = false;
+        for (int i = 0; (i < numPlayers) && (i < 4); i++) {
+            humanRacing |= (MEM_BU(0X98 + i, GS) != 0);
+        }
+        bar_rt64_set_hud_anchor(((st == 5) && sawSetup && ((phase == 0) || (phase == 3)) && (replay == 0) && humanRacing) ? 1 : 0);
         bar_rt64_set_game_state((unsigned int)st);
         bar_rt64_set_hud_paused((paused != 0) ? 1 : 0);
 
