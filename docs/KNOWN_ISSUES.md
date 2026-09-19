@@ -5,6 +5,175 @@ Add the negative results, not just the leads — they are the expensive part.
 
 ---
 
+## OPEN -- The game freezes leaving the results screen: the audio manager spins in `alEvtqNextEvent`
+
+**Measured 2026-09-19, on a live frozen process** (0.3.0-alpha + watchdog build, pid 11212, frozen
+~40 min). This is a **game-logic freeze, not a pump stall**: `Responding=True` throughout, so Windows
+logged nothing and the hang watchdog correctly did not fire -- `update_gfx` was still running and the
+renderer kept presenting the last frame. The picture is frozen; the process is not.
+
+**The two threads that matter.** Walked from outside with DbgHelp (no debugger is installed; the
+walker is `scratchpad/walk.ps1`, kept in the session scratchpad -- re-create it from this entry if
+needed):
+
+```
+--- thread 16980 "Game 3"   <- audio manager, RUNNING, burning a full core
+  # 0 alEvtqNextEvent +0x1ae   (RecompiledFuncs/funcs_45.c:11256)
+  # 1 func_8000C12C +0x27f     (RecompiledFuncs/funcs_57.c:9452)
+  # 2 alAudioFrame +0x452      (RecompiledFuncs/funcs_4.c:12350)
+  # 3 uvAudioMgrHandleFrameMesg +0x43a
+  # 4 uvAudioMgrThreadFunc +0x535
+
+--- thread 12396 "Game 6"   <- app thread, PARKED, CPU not advancing
+  # 2 wait_for_resumed          (ultramodern/src/threads.cpp:164)
+  # 3 uvClkGetSec +0x1e
+  # 4 func_uvcmidi_rom_00400940 +0x18b   <- the documented MIDI teardown spin
+  # 5 func_uvcmidi_rom_004003B4 +0xbb
+  # 6 uvFreeFile +0xec
+  # 7 uvUnloadFile +0x42b
+  # 8 uvUnloadModule +0x67
+  # 9 uvSetGameState +0x1b3               <- leaving the results screen
+  #10 func_80000450 +0xd8f
+  #11 Thread_App +0x4c
+```
+
+**Three samples 700 ms apart** put thread 16980's PC at `func_8000C12C +0x27f` / inside
+`alEvtqNextEvent` every time, with `TotalProcessorTime` climbing 3:35 -> 6:23 while frozen: it is
+spinning in a tight loop, not blocked. Thread 12396's CPU time did **not** move between samples
+(3:48.765 both times): it is parked, not spinning.
+
+**Why that wedges everything.** Two mechanisms already documented in
+[`technical/05`](technical/05-runtime-host.md) combine:
+
+1. `func_uvcmidi_rom_00400940` "stops the MIDI sequence player then **spins** until it reports
+   stopped, or 2.0 s", and the player's state only advances when the audio thread runs. Leaving the
+   results screen unloads that module, which runs exactly this teardown.
+2. The cooperative preemption only yields for threads with priority **below 100**, so the audio
+   manager (~110) never yields on its own work. `bar_consume_yield` is visible in its stack doing
+   precisely that check and declining.
+
+So the audio manager holds the token, loops forever in the audio event queue, and never advances the
+sequence player to "stopped". The app thread's 2.0 s timeout never even gets evaluated, because its
+yield inside `uvClkGetSec` never gets resumed. Everything downstream of the app thread stops.
+
+**Root cause is therefore the `alEvtqNextEvent` loop, and it is NOT yet explained.** `alEvtqNextEvent`
+pops libultra audio events by time; an infinite loop there suggests a corrupted or circular event
+list, or an event with a delta that never retires (**inferred** -- the queue's contents were not read).
+That is the next thing to measure.
+
+**Relationship to the six AppHangs below: plausible, unproven.** The symptoms differ --
+`Responding=True` here, pump stalled there -- so they are not obviously the same defect. One way they
+could be: a player who tries to close a frozen window makes the shutdown path wait on these wedged
+game threads, which would stall the pump and produce exactly an AppHang. **Inference, not measured.**
+
+**Reproduced a second time, same session day, different process (pid 9604, 10:06 launch).** The two
+stacks are identical down to the call offsets -- `uvSetGameState +0x1b3`, `uvUnloadModule +0x67`,
+`uvUnloadFile +0x42b`, `uvFreeFile +0xec`, `func_uvcmidi_rom_004003B4 +0xbb`,
+`func_uvcmidi_rom_00400940 +0x18b`, `uvClkGetSec +0x1e` on the app thread; `func_8000C12C` ->
+`alAudioFrame +0x452` -> `uvAudioMgrHandleFrameMesg +0x43a` -> `uvAudioMgrThreadFunc +0x535` on the
+audio thread. Measured over a 3.0 s window while frozen: the audio thread gained **3.03 s** of CPU
+(a full core, `Running`, PC moving inside the loop) while the app thread gained **0.000 s** (`Wait`,
+stuck at 3:17.828). **This defect is deterministic, not a race.**
+
+**The loop is libultra's sequence player.** `func_8000C12C` is the recompiled
+`__seqpVoiceHandler`/`_seqpPostNextSeqEvent` body; the decomp shows its shape in
+[`lib/bar-decomp/tools/ultralib/src/audio/seqplayer.c:329`](../lib/bar-decomp/tools/ultralib/src/audio/seqplayer.c):
+
+```c
+do {
+    switch (seqp->nextEvent.type) { ... }
+    seqp->nextDelta = alEvtqNextEvent(&seqp->evtq, &seqp->nextEvent);
+} while (seqp->nextDelta == 0);
+```
+
+So an infinite loop here means the event queue keeps handing back **delta-0 events forever**: either
+events are posted as fast as they are drained, or the queue's list has become circular. The stop
+handshake that the teardown drives runs through this same switch -- `AL_SEQP_STOPPING_EVT`
+(seqplayer.c:243) sets `AL_STOPPING` and posts `AL_SEQP_STOP_EVT`, which at :217 sets `AL_STOPPED` --
+so a cycle in that handshake is the first place to look. **Inferred from the decomp's shape; the
+queue's actual contents have not been read.**
+
+Note the app thread cannot be feeding the queue while frozen: it is parked, gaining no CPU. Whatever
+sustains the 0-delta cycle is already inside the queue by then.
+
+**Next, in order:**
+1. Read `seqp->state` and the `ALEventQueue` list when the freeze is live (F3 RDRAM viewer, or a
+   host-side dump keyed off the audio thread). That is the one measurement that names the cause.
+2. Control: `BAR_NO_PREEMPT=1`. Expected to still freeze -- the audio thread's loop is over its own
+   queue and does not need the scheduler -- which would confirm the preemption priority rule only
+   explains why nothing *recovers*, not why it wedges. A cheap, falsifiable prediction.
+3. Only then consider a mitigation. A bounded-iteration guard on that loop (the shape of
+   `fix-recompiled.sh` rule E) would convert the freeze into a dropped note, but it treats the
+   symptom and must not be landed as if it were the fix.
+
+---
+
+## OPEN -- The window goes "Not Responding" and Windows closes it (AppHang), six times since 7 Sep
+
+**Status (2026-09-19):** reported from playtesting -- the game stopped responding while Daniel was
+**looking at the race results after finishing a championship race**, and Windows closed it. The
+port's own crash handler produced nothing, correctly: `src/main/bar_crash.cpp` installs an
+*unhandled-exception* filter, and a hang raises no exception. Release is `/SUBSYSTEM:WINDOWS`, so
+stderr went nowhere either (`BAR_DBG_UI=1` was not set).
+
+**It is one hang, not six coincidences.** Windows Error Reporting has six `AppHangB1` reports for
+this exe, and every one carries the identical hang-stack hash, across five different builds:
+
+| Local time | Build (exe PE stamp, UTC) | Hang stack hash |
+|---|---|---|
+| 2026-09-07 08:10 | 09-07 06:00:06 | `170f3bf0b8952de987768585f9009d4b` |
+| 2026-09-11 15:15 | 09-11 13:07:04 | `170f3bf0b8952de987768585f9009d4b` |
+| 2026-09-11 15:42 | 09-11 13:37:27 | `170f3bf0b8952de987768585f9009d4b` |
+| 2026-09-11 15:57 | 09-11 13:54:10 | `170f3bf0b8952de987768585f9009d4b` |
+| 2026-09-14 19:22 | 09-11 13:54:10 | `170f3bf0b8952de987768585f9009d4b` |
+| 2026-09-19 08:35 | 09-17 14:48:40 (0.3.0-alpha) | `170f3bf0b8952de987768585f9009d4b` |
+
+Every report also has `Hang Signature = 170f` and `Hang Type = 67246080` (`0x04020000`). A constant
+stack hash across five builds and twelve days means the main thread stops pumping at the *same* place
+every time -- so this is reproducible in principle, and worth catching rather than guessing at.
+
+**Re-derive it:** the reports live in `C:\ProgramData\Microsoft\Windows\WER\{ReportArchive,ReportQueue}\Critical_beetle-adventure_*`
+(admin-only; copy with `robocopy`, not `Copy-Item` -- the folder names overrun `MAX_PATH`). Each holds
+only `Report.wer`; **there is no `.hdmp`/`.mdmp`, so no thread stacks exist for any of the six.**
+`Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='Application Hang'}` lists them
+without elevation.
+
+**The mechanism this port is already known to have.** `docs/technical/05-runtime-host.md` ("SDL event
+ownership") records that recompinput is the sole `SDL_PollEvent` caller and is pumped from
+`update_gfx`; when nothing drained SDL's queue the window "stopped answering Windows and went Not
+Responding". Anything that blocks the `update_gfx` thread reproduces an AppHang by that route.
+
+**Lead, NOT yet measured -- do not treat as the cause.** `main.cpp:406` calls
+`bar::input::mempak_flush_all()` every frame on that same thread. It takes `g_mempak_mutex` and, when
+dirty, writes the full 32 KiB synchronously (`bar_input.cpp:517-530`), while `mempak_write()` takes
+the same mutex from the SI stub (`os_unimpl_stubs.cpp:230`) on the game thread. The results screen is
+where BAR saves standings and records to the Controller Pak, which puts peak traffic through that
+mutex on the screen where the hang was seen.
+
+**Against that lead:** `mempak_p0.pak` had mtime 08:22:41 and was an intact 32768 bytes, while the
+hang was at 08:35:23. A flush that stalled mid-write should have left a newer mtime or a short file.
+So the last *completed* flush was 13 minutes earlier, and nothing shows a write in progress at the
+hang. The lead survives only in the form "blocked acquiring the mutex, before writing anything".
+
+**Ruled out:** the `BlueScreen` / `LiveKernelEvent` WER records stamped in the same second as the
+2026-09-19 hang are unrelated -- their dumps are dated 2025-10-09 and 2026-08-16, i.e. WER flushing an
+old queue, not a machine fault that day. Also unrelated: the seven `AppCrash_BeetleRecomp.exe` BEX64
+reports (4-5 Sep, `c0000409` in `ucrtbase.dll`) -- those predate the exe rename and are a different,
+older binary.
+
+**Instrumented (2026-09-19), not yet fixed.** Nothing can symbolize the six past hangs, because no
+dump was ever written for any of them. So the next occurrence is now made to produce a stack instead:
+`src/main/bar_watchdog.cpp` watches the per-frame counter that `update_gfx` increments and, after 5 s
+of no frames, walks every thread and writes a symbolized report to
+`%LOCALAPPDATA%\beetle-adventure-racing-recomp\hang-report-<timestamp>-<n>.txt`. It reports recovered
+stalls as well as fatal ones. Verified by injecting a stall (`BAR_WATCHDOG_SELFTEST`); see
+[`technical/08`](technical/08-diagnostics-and-methodology.md#catching-a-hang).
+
+**So the next step is a repro, not more code reading.** Play a championship race to the results
+screen and, if it hangs, attach the `hang-report-*.txt`. The pump thread's stack in that file says
+directly whether the Controller Pak lead above is right -- `mempak_flush_all` blocked on
+`g_mempak_mutex` would be unmistakable -- or whether it is something else entirely.
+
 ## OPEN -- Linux: the game crashes during boot (WSLg, llvmpipe)
 
 **Status (2026-09-17):** the Linux build (`scripts/build-linux.sh`, clang-21, Ubuntu 26.04 under WSL2)

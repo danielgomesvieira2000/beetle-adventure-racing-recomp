@@ -42,6 +42,7 @@
 #include "main/bar_input.hpp"                 // bar::input — live 4-port runtime input path
 #include "main/bar_rumble.hpp"                // bar::rumble — the pulsed Rumble Pak motor model
 #include "main/bar_inspector.h"                // bar::inspector — the F1 HUD debug menu + hud.json
+#include "main/bar_watchdog.h"                // bar::watchdog — all-thread stacks when the SDL pump stalls
 #ifdef BEETLE_ENABLE_FRONTEND
 #include "frontend/bar_frontend.h"            // bar::frontend — RecompFrontend launcher/menus + input
 #endif
@@ -304,6 +305,9 @@ static ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callba
 static void bar_update_window_focus();
 
 static void update_gfx(ultramodern::gfx_callbacks_t::gfx_data_t /*data*/) {
+    // First statement in the callback, so a stall anywhere below -- including inside the pump itself
+    // -- stops the counter and the watchdog times the wedge from the start of the frame that wedged.
+    bar::watchdog::heartbeat();
 #ifdef BEETLE_ENABLE_FRONTEND
     // recompinput owns the SDL queue and must be its ONLY poller -- a second loop would race it and
     // each would swallow events the other needed. It is pumped here rather than from input_poll
@@ -928,6 +932,9 @@ int main(int argc, char** argv) {
 #if defined(_WIN32) || defined(__linux__)
     { extern void bar_install_crash_handler(); bar_install_crash_handler(); }   // backtrace on a fatal fault
 #endif
+    // The companion to the above: a fault raises an exception and the filter catches it, but a hang
+    // raises nothing, which is why the six recorded AppHangs produced no stack. BAR_WATCHDOG=0 off.
+    bar::watchdog::install();
 #ifdef _WIN32
     // Raise the Windows timer resolution to 1ms. CRITICAL for menu/sparse-workload framerate: the game's
     // VI-synced RCP scheduler + our runtime's gfx/task threads hand work off via timed waits. At the default

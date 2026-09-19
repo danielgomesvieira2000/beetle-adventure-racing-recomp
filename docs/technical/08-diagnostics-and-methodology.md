@@ -109,6 +109,47 @@ presents on its own.
 virtualised 1536×864 view of a 1920×1080 window and produces an image that looks shifted and clipped
 — an artefact that was briefly mistaken for a rendering bug.
 
+## Catching a hang
+
+A fault and a hang need different instruments, and this port has both because it has seen both.
+
+`src/main/bar_crash.cpp` installs an **unhandled-exception filter**: on an access violation it walks
+the faulting thread with DbgHelp and prints a symbolized backtrace. It cannot see a hang, because a
+hang raises no exception. That gap was not theoretical -- Windows Error Reporting held six
+`AppHangB1` records for this exe between 7 and 19 Sep 2026, all with the same hang-stack hash across
+five builds, and **not one of them contained a dump**, so no stack for that bug has ever existed.
+(`docs/KNOWN_ISSUES.md` carries the table.)
+
+`src/main/bar_watchdog.cpp` closes it. `update_gfx` increments a counter as its first statement; a
+monitor thread wakes every 500 ms, and when the counter has been stale for `BAR_WATCHDOG_SECS`
+(default 5) it walks **every** thread in the process and writes a symbolized report to
+`%LOCALAPPDATA%\beetle-adventure-racing-recomp\hang-report-<timestamp>-<n>.txt`, also echoing it to
+stderr. `update_gfx` is the right thing to watch because, per
+[05](05-runtime-host.md#sdl-event-ownership), it is the sole place SDL's queue is drained -- when it
+stops, the window stops answering Windows and an AppHang follows.
+
+Three properties are worth knowing:
+
+* **It reports recovered stalls too.** When the counter moves again the episode closes and the
+  watchdog re-arms. A near-miss has the same stack as the fatal one and is easier to collect.
+* **It is non-destructive.** Threads are suspended one at a time and resumed before anything is
+  symbolized. Measured: with `BAR_WATCHDOG_SELFTEST=8 BAR_WATCHDOG_SECS=3`, the report was written
+  and the process was still running and `Responding=True` afterwards.
+* **A long legitimate stall produces a report.** First-race pipeline creation is the plausible one.
+  That is not suppressed -- it is worth knowing -- so raise the threshold if it becomes noise.
+
+**Re-derive it without waiting for the bug:**
+
+```
+BAR_DBG_UI=1 BAR_WATCHDOG_SECS=3 BAR_WATCHDOG_SELFTEST=8 ./beetle-adventure-racing-recomp.exe
+```
+
+Verified 2026-09-19: the report named the pump thread, placed it at the injected `Sleep` in
+`main.cpp`, and symbolized all 51 threads with file and line, naming the ones the runtime labels
+(`Gfx Thread`, `SP Task Thread`, `BAR Preempt`, `D3D Background Thread N`). Symbol names need
+`beetle-adventure-racing-recomp.pdb` next to the exe, as the crash handler does; without it the
+report still gives module+offset, which resolves offline.
+
 ## Environment variable reference
 
 ### Run control
@@ -141,6 +182,9 @@ virtualised 1536×864 view of a 1920×1080 window and produces an image that loo
 | `BAR_NO_MENU_CLEAR=1` | Do not clear menu framebuffers that contain Stretch-tagged pieces each frame (A/B for the Track Select flicker fix, `docs/HUD-INSPECTOR.md`) |
 | `BAR_NO_FB_FULL_HEIGHT=1` | Size framebuffer render targets to the drawn extent again, instead of the full VI height for full-screen pairs (A/B for the pause-backdrop flicker fix, `docs/HUD-INSPECTOR.md`) |
 | `BAR_NO_RUMBLE_PAK=1` | Serve the Controller Pak alone: plain identify echo, no motor, `fix-recompiled.sh` rule I inert. The A/B for anything that looks like a save or pak-prompt regression |
+| `BAR_WATCHDOG=0` | Disable the SDL-pump hang watchdog (on by default; see "Catching a hang" below) |
+| `BAR_WATCHDOG_SECS=<n>` | Stall threshold before a hang report is written; default `5` |
+| `BAR_WATCHDOG_SELFTEST=<secs>` | Wedge the pump thread once, on frame 300, to prove the watchdog fires. Verification switch, not a diagnostic |
 | `BAR_DBG_UI=1` | Frontend diagnostics to `bar_ui_trace.log`. **Required** to see frontend faults at all: the release build is `/SUBSYSTEM:WINDOWS`, so stderr goes nowhere and shell redirection captures nothing |
 | `BAR_DBG_GFX=1` | What actually reached RT64's `userConfig` — widescreen depends on `aspectRatio == Expand` surviving, so print it rather than trusting the JSON |
 | `BAR_DBG_FRUSTUM=1` | Every perspective frustum built (destination, six parameters, aspect), and once, what the adjustment did |
