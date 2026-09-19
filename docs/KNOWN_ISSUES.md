@@ -5,6 +5,55 @@ Add the negative results, not just the leads — they are the expensive part.
 
 ---
 
+## OPEN -- Mount Mayhem's atmospheric haze is missing: it is depth-buffer fog, and RT64 cannot read BAR's Z-buffer back correctly
+
+Reported by Daniel 2026-09-19: no haze on Mount Mayhem, with Draw Distance at 1x as well (confirmed in
+`graphics.json`; at 1x `bar_frustum.cpp` leaves the projection matrix untouched). Parked the same day
+after five measurement rounds; the experiment is on the local branch `wip/mayhem-fog`.
+
+**What the haze is.** Not N64 hardware fog. Measured with RT64-side traces (`BAR_DBG_FOG`, on the wip
+branch):
+
+* The game's fog setter `func_uvgfxstate_rom_00401F54(start, end)` (sets `G_FOG` + `gSPFogFactor`) is
+  called thousands of times, always with `start = 0`, i.e. off. No `G_MW_FOG` ever reaches RT64, and 0
+  draws per frame have `G_FOG`. The fog **colour** is set (`B9C5D7FF`, the blue-grey of the sky).
+* The game's own profiler (`uvdbg_rom`) lists `FOG` and `FOGOVER` as separate render stages.
+* In a Mount Mayhem race, ~81 draws per frame use a 2-cycle render mode (`L=3C184348/9`,
+  `H=0010CCAF`) whose second cycle blends **fog colour over memory by the combined alpha**, with a
+  combiner of colour 0 and alpha = `TEXEL0` alpha (`cc=FCFFFFFF FFFFF238`).
+* Those draws are **80 full-width texture rectangles, 3 rows each, top to bottom**, textured with a
+  320x3 **IA16** tile (`fmt=3 siz=2 line=80`) whose image addresses step through `0x3DA800-0x3FFFFF` --
+  **the game's own Z-buffer** (`zImg = 0x3DA800`, 320x240x2 bytes). The game reads its depth buffer
+  back as a texture and blends the fog colour by it.
+
+**Why it does not show, and what was tried.**
+
+* With RT64's default **Copy with GPU** on, a texture that points into a framebuffer is served by a
+  GPU tile copy. For a depth buffer the copy holds the RGBA16 bit pattern of the N64 Z value
+  (`RtCopyDepthToColorPS`), and `checkTileCopyTMEM` asks for reinterpretation because the tile's
+  format (`G_IM_FMT_DEPTH`) differs from the texture's (IA). `FbReinterpretCS` has no branch for a DEPTH
+  source, so the copy passed through unchanged and the game's IA16 alpha was the one-bit alpha of an
+  RGBA16 texel: no fog.
+* **Copy with GPU off** (F1 → Emulator Configuration, not persistent): the game reads the Z-buffer
+  from RDRAM, which Render to RAM (on by default) writes back. **The haze appears**, but blocky and
+  offset -- the mask is the native 320x240 depth, and it does not line up with the widened picture.
+  Confirmed by Daniel.
+* **Experiment (on `wip/mayhem-fog`): let `FbReinterpretCS` treat a DEPTH source like RGBA16.** The fog
+  then appears on the GPU path, but the whole frame is banded and blocky -- rejected by eye. Reason
+  found afterwards: `RGBA16toIA16` is deliberately **not bit-exact**; it re-encodes the colour as a
+  fake 10-10-10-2 value and reads it back as 16/16 to keep precision for colour effects, so a depth
+  value comes out as a sawtooth rather than as its two bytes.
+
+**Next, if picked up.** A dedicated, bit-exact DEPTH -> IA16 path in the reinterpretation (split the
+16-bit Z value into its high and low byte), then check at native and at 2x resolution, with and
+without widescreen. It is still to be confirmed which byte the fog really depends on: the combiner
+decode above reads `TEXEL0` alpha, i.e. the low byte, which would itself be a sawtooth, so the
+combiner decode should be re-checked first -- possibly against the RT64 debugger's view of one of
+these draws. A native RT64 effect that computes the same fog from the GPU depth buffer is the
+alternative if the tile-copy path cannot be made exact at scaled resolution.
+
+---
+
 ## RESOLVED -- Players three and four: input and Rumble Pak
 
 Verified 2026-09-19 in the headless build with all four ports on the keyboard (a seeded `input.json`,
