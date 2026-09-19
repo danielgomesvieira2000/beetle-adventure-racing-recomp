@@ -14,7 +14,7 @@ behind [Zelda 64: Recompiled](https://github.com/Zelda64Recomp/Zelda64Recomp).
 > resume. The reverse-engineering and porting reference is
 > **[docs/technical/](docs/technical/README.md)**.
 >
-> **Current release: v0.3.0-alpha** (Windows x64) — rumble, widescreen HUD and menu fixes. Get it
+> **Current release: v0.4.0-alpha** (Windows x64) — multiplayer for up to four players, split-screen widescreen, results-screen fixes. Get it
 > from the **[releases page](https://github.com/danielgomesvieira2000/beetle-adventure-racing-recomp/releases)**.
 > A Linux build is in progress (it compiles, but crashes during boot; see
 > [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md)).
