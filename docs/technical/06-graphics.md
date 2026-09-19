@@ -362,6 +362,23 @@ unmatched split-screen modules and was not found in the time boxed for it: the c
 `0x129` (22 / 297) appear only in the colour-bars, victory and demo modules, which pass the inset
 rectangle to a graphics call.
 
+### Split-screen HUD: the battle's health bars
+
+Measured with `BAR_HUD_TRACE=2` in a 4-player battle. The ladybug icons beside each bar are textured
+rectangles, with the same six textures for every player (x 32..48 for players one and three,
+272..288 for two and four). The bars themselves are not rectangles: they are geometry in their own
+orthographic layer, `ortho#AE46B54C`, whose eight draws (`[hud-ortho]` lines; two per bar) sit at
+x 24..30 and 288..295 and nothing else. The map's arrows are separate small layers.
+
+One identity therefore names all four players' copies, and no single side is right for all of them.
+`BarHud::Class::Sides` sends each copy to the edge of the half it is drawn in. For a rectangle that
+is just `left` or `right`. For the layer, RT64 places it as a `left`-anchored (unwidened) layer, and
+the framebuffer renderer, which issues every draw with its own push constants, sets each draw's
+horizontal `screenOffset` to the `left` or `right` origin from the draw's centre in the RSP's
+screen-space vertices. The layer's viewport clip spans both edges, or the draws moved right would be
+clipped. `sides` resolves to `center` outside the battle state (6), so the textures cannot move in
+a menu. Tagged in `sBuiltinTags`; verified by eye (2026-09-19).
+
 ### Split-screen tiles
 
 The coverage test measures a projection against its **framebuffer pair's** scissor, which is the
@@ -437,11 +454,9 @@ Negative, and worth keeping so nobody pays for them again:
 * The **results screen** has not been checked with anchoring on. Finishing a race takes minutes, so
   its state and `raceState` were never measured; if it runs as state 5 / phase 0 its 2D layout will
   be anchored like the HUD, which is probably wrong for it.
-* **Split-screen HUD** is not anchored. The 3D views and the dividers fill the window (see above),
-  but the per-player HUD stays inside the 4:3 area. In the 4-player battle
-  (`BAR_HUD_TRACE=2`) the ladybug icons beside each health bar are textured rectangles with the
-  same six textures for every player (x 32..48 for players one and three, 272..288 for two and
-  four), and the health bars themselves are not rectangles at all: they are geometry in the battle's
-  single orthographic layer, which RT64 can only place as a whole.
+* **Split-screen HUD beyond the 4-player battle's bars** has not been checked: 2- and 3-player
+  battles, split-screen races, and a one-off flat overlay seen once across player four's quarter
+  (x 158..297, y 120..224, untextured -- probably a hit flash), which is drawn to the overscan inset
+  and so may stop short of the edges.
 * The **pause menu's dimming panel** covers only the centred 4:3 region, leaving the widened margins
   undimmed. It is a 2D rectangle in the middle band, so anchoring does not touch it.

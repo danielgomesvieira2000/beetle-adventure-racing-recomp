@@ -2,6 +2,7 @@
 // RT64
 //
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include "rt64_framebuffer_renderer.h"
@@ -1530,12 +1531,23 @@ namespace {
             // placed by one rule and transformed by the other. `publish` is false here because that
             // one already handed this projection to the inspector.
             uint16_t viewportOrigin = drawData.viewportOrigins[proj.transformsIndex];
+            BarHud::Class barLayerClass = BarHud::Class::Center;
             if (viewportOrigin == G_EX_ORIGIN_NONE) {
-                viewportOrigin = BarHud::viewportOriginFor(
-                    BarHud::classifyProjection(barProjKind(proj.type), proj, drawData.callTiles.data(),
-                        drawData.callTiles.size(), false));
+                barLayerClass = BarHud::classifyProjection(barProjKind(proj.type), proj, drawData.callTiles.data(),
+                    drawData.callTiles.size(), false);
+                viewportOrigin = BarHud::viewportOriginFor(barLayerClass);
             }
             const bool barAnchoredViewport = (viewportOrigin != drawData.viewportOrigins[proj.transformsIndex]);
+
+            // BAR: Class::Sides. The layer is placed as a Left-anchored one, and each of its draws is
+            // then moved to the edge of the half it is drawn in (see the per-call step below). Its
+            // clip has to span both edges, or the draws moved right are clipped away.
+            const bool barSides = (barLayerClass == BarHud::Class::Sides) && (viewportOrigin == G_EX_ORIGIN_LEFT) &&
+                (proj.type == Projection::Type::Orthographic);
+            auto barOriginOffsetX = [&](uint16_t origin) {
+                const float centerOffset = ((middleViewport * origin) / G_EX_ORIGIN_CENTER) * extOriginPercentage + middleViewport * (1.0f - extOriginPercentage);
+                return halfPixelOffset.x + ((centerOffset - middleViewport) / halfViewportSize.x);
+            };
             if (proj.usesViewport()) {
                 // The call's scissor spans the whole width of the framebuffer pair scissor. Custom origin must not be in use to be able to use the stretched viewport.
                 const auto &viewport = drawData.rspViewports[proj.transformsIndex];
@@ -1562,7 +1574,8 @@ namespace {
                     }
                 }
 
-                viewportClip = convertViewportRect(viewport.rect(viewportClipRatios), p.resolutionScale, p.fbWidth, projInvRatioScale, extOriginPercentage, 0.0f, viewportOrigin, viewportOrigin);
+                viewportClip = convertViewportRect(viewport.rect(viewportClipRatios), p.resolutionScale, p.fbWidth, projInvRatioScale, extOriginPercentage, 0.0f,
+                    viewportOrigin, barSides ? uint16_t(G_EX_ORIGIN_RIGHT) : viewportOrigin);
             }
 
             for (uint32_t d = 0; (d < proj.gameCallCount) && (globalCallIndex < p.maxGameCall); d++) {
@@ -1690,6 +1703,27 @@ namespace {
                             instanceDrawCall.type = InstanceDrawCall::Type::IndexedTriangles;
                             triangles.indexStart = triangles.vertexTestZ ? vertexTestZFaceIndicesStart : call.meshDesc.faceIndicesStart;
                             invRatioScale = projInvRatioScale;
+
+                            // BAR: Class::Sides -- this draw goes to the edge of the half it is in. Its
+                            // centre is taken from the RSP's screen-space vertices, in game pixels.
+                            // Set for every draw of the layer, because `triangles` is shared between
+                            // them and would otherwise carry the previous draw's side.
+                            if (barSides) {
+                                float minX = 1e9f, maxX = -1e9f;
+                                const uint32_t indexCount = call.callDesc.triangleCount * 3;
+                                for (uint32_t v = 0; v < indexCount; v++) {
+                                    const size_t faceIndex = size_t(call.meshDesc.faceIndicesStart) + v;
+                                    if (faceIndex >= drawData.faceIndices.size()) break;
+                                    const uint32_t vertexIndex = drawData.faceIndices[faceIndex];
+                                    if (vertexIndex >= drawData.posScreen.size()) break;
+                                    minX = std::min(minX, float(drawData.posScreen[vertexIndex][0]));
+                                    maxX = std::max(maxX, float(drawData.posScreen[vertexIndex][0]));
+                                }
+                                const BarHud::Class side = (minX <= maxX)
+                                    ? BarHud::resolveSides(BarHud::Class::Sides, (minX + maxX) / 2.0f, int32_t(p.fbWidth))
+                                    : BarHud::Class::Left;
+                                triangles.screenOffset.x = barOriginOffsetX((side == BarHud::Class::Right) ? G_EX_ORIGIN_RIGHT : G_EX_ORIGIN_LEFT);
+                            }
                             break;
                         }
                         case Projection::Type::Rectangle: {

@@ -83,13 +83,14 @@ const char* class_name(int cls) {
         case kStretch: return "stretch";
         case kSpill:   return "spill";
         case kCover:   return "cover";
+        case kSides:   return "sides";
         default:       return "center";
     }
 }
 
 // The lists hud.json is made of, indexed by Class. Kept as one array so the file format and the
 // dropdown cannot drift apart: adding a class means adding it here and in the enum, and nowhere else.
-const char* const kClassNames[] = { "center", "left", "right", "stretch", "spill", "cover" };
+const char* const kClassNames[] = { "center", "left", "right", "stretch", "spill", "cover", "sides" };
 constexpr int kClassCount = int(sizeof(kClassNames) / sizeof(kClassNames[0]));
 
 std::filesystem::path tag_path() {

@@ -227,6 +227,19 @@ namespace RT64 {
             // pause. Also drawn smaller for the pre-race course overview, which coverScale handles. OPEN:
             // a bottom band flickers on alternate presents while paused -- see docs/HUD-INSPECTOR.md.
             { "ortho#269E7CEF", Class::Cover },
+
+            // 4-player battle HUD, measured 19 Sep 2026 with BAR_HUD_TRACE=2. Every player has the
+            // same copies, so each goes to the side of the screen it is drawn on (Class::Sides).
+            // ortho#AE46B54C is the health-bar layer: 8 draws, two per bar, at x 24..30 (players one
+            // and three) and 288..295 (two and four), and nothing else. The six textures are the
+            // ladybug icons beside each bar (x 32..48 and 272..288).
+            { "ortho#AE46B54C", Class::Sides },
+            { "tex:0x002D95C8", Class::Sides },
+            { "tex:0x002B3CA0", Class::Sides },
+            { "tex:0x002D9370", Class::Sides },
+            { "tex:0x002D9188", Class::Sides },
+            { "tex:0x002D97B0", Class::Sides },
+            { "tex:0x002D9BF0", Class::Sides },
             // persp#0DB8F095: a 3D layer, tagged Center by Daniel. Center is already the default for a
             // perspective layer, so this changes nothing unless that default does.
             { "persp#0DB8F095", Class::Center },
@@ -454,6 +467,8 @@ namespace RT64 {
                 cls = classifyByPosition(rect, screenWidth, fillCycle);
             }
 
+            cls = resolveSides(cls, (rect.ulx + rect.lrx) / 8.0f, screenWidth);
+
             if (listing) {
                 RT64_BarHudNoteElement(identity, secondIdentity,
                     rect.ulx / 4.0f, rect.lrx / 4.0f, rect.uly / 4.0f, rect.lry / 4.0f,
@@ -469,7 +484,7 @@ namespace RT64 {
                     key = (key * 1099511628211ull) ^ uint8_t(*c);
                 }
                 if (seen.insert(key).second && (seen.size() <= 4000)) {
-                    static const char *names[] = { "center", "left", "right", "stretch", "spill", "cover" };
+                    static const char *names[] = { "center", "left", "right", "stretch", "spill", "cover", "sides" };
                     fprintf(stdout, "[hud] %s %s %s px=(%.1f,%.1f)-(%.1f,%.1f) state=%u -> %s%s\n", kind,
                         identity, secondIdentity, rect.ulx / 4.0f, rect.uly / 4.0f, rect.lrx / 4.0f,
                         rect.lry / 4.0f, gameState(), names[int(cls)], tagged ? " (tagged)" : "");
@@ -660,8 +675,24 @@ namespace RT64 {
             }
         }
 
+        Class resolveSides(Class cls, float centreX, int32_t screenWidth) {
+            if (cls != Class::Sides) {
+                return cls;
+            }
+
+            if ((gameState() != 6) || (screenWidth <= 0)) {
+                return Class::Center;
+            }
+
+            return (centreX < (screenWidth / 2.0f)) ? Class::Left : Class::Right;
+        }
+
         uint16_t viewportOriginFor(Class cls) {
             switch (cls) {
+            case Class::Sides:
+                // The layer as a whole is placed like a Left-anchored one (not widened); the
+                // framebuffer renderer then moves each right-half draw to the right edge instead.
+                return (gameState() == 6) ? uint16_t(G_EX_ORIGIN_LEFT) : uint16_t(G_EX_ORIGIN_NONE);
             case Class::Left:
                 return G_EX_ORIGIN_LEFT;
             case Class::Right:
@@ -674,6 +705,10 @@ namespace RT64 {
                 // individual rectangle is -- and is treated as Center.
                 return G_EX_ORIGIN_NONE;
             }
+        }
+
+        bool traceAllEnabled() {
+            return traceEnabled() && traceAll();
         }
 
         bool snapSplitDivider(int32_t screenWidth, uint32_t fillColor, int32_t &ulx, int32_t &uly,

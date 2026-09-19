@@ -44,6 +44,13 @@ namespace RT64 {
                           // about its centre by exactly enough to put BAR's overscan-safe rectangle
                           // on the frame's edges. For a layer whose geometry is authored inset for a
                           // CRT and so cannot reach the edges however the layer itself is scaled.
+            Sides   = 6,  // Split screen: each draw goes to the edge of the half it is drawn in --
+                          // Left if its centre is left of the screen's middle, Right otherwise. For
+                          // an element every player has a copy of (the battle's health bars and
+                          // ladybug icons), where one identity names all four copies and a single
+                          // side would be wrong for half of them. The identity still names content;
+                          // only the direction comes from where each copy is drawn. Applies only in
+                          // the battle state (6); Center everywhere else. See resolveSides.
         };
 
         // Set by the app once per controller poll: true only while the game is in its racing state.
@@ -156,6 +163,10 @@ namespace RT64 {
         // compensation instead, which is a separate lever at the same call site.
         uint16_t viewportOriginFor(Class cls);
 
+        // Class::Sides made concrete for one draw whose horizontal centre is `centreX` game pixels on
+        // a `screenWidth`-wide screen. Any other class is returned unchanged.
+        Class resolveSides(Class cls, float centreX, int32_t screenWidth);
+
         // Whether a projection drawn into `inter` (its scissor intersected with its viewport) covers
         // enough of its framebuffer pair's scissor `fbScissor` to be widened. The projection
         // processor (which widens the matrix) and the framebuffer renderer (which widens the
@@ -188,6 +199,9 @@ namespace RT64 {
         // whole 320-wide screen, which RT64 already stretches across the widened frame, as it does
         // every full-width fill. Only black (0x00010001) lines on a 320-wide colour image qualify.
         // BAR_SPLIT_DIVIDERS=0 turns it off for A/B.
+        // BAR_HUD_TRACE=2: the full element listing (see rt64_bar_hud.cpp).
+        bool traceAllEnabled();
+
         bool snapSplitDivider(int32_t screenWidth, uint32_t fillColor, int32_t &ulx, int32_t &uly,
             int32_t &lrx, int32_t &lry);
 

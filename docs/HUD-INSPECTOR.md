@@ -181,7 +181,7 @@ prompts and every front-end menu, **2** for the boot attract sequence, **5** for
 | **Clear overrides** | Drops every override. Does not touch `hud.json`. |
 | **filter** | Substring match on either identity. |
 
-### The six classes
+### The seven classes
 
 | Class | What the fork emits | Use it for |
 |---|---|---|
@@ -191,6 +191,7 @@ prompts and every front-end menu, **2** for the boot attract sequence, **5** for
 | `stretch` | `rectAspect = G_EX_ASPECT_STRETCH`, origins left `G_EX_ORIGIN_NONE`, plus a widened scissor | Backgrounds, full-screen overlays, menu wipes — anything that should cover the widened frame. |
 | `spill` | Nothing about placement. The game's 4:3 scissor is lifted for that draw only. | An element that is already in the right place at the right size and is merely being **cut off** at the old frame's edge. |
 | `cover` | **Projections only.** `stretch`, and then magnify the layer's content about its centre by 320/274 and 240/206 — about 1.167 — putting BAR's overscan-safe rectangle on the frame's edges. | A layer whose geometry is authored inset for a television and so cannot reach the edges however the layer itself is scaled. The pause screen's backdrop is the worked example. |
+| `sides` | **Battle state (6) only; `center` elsewhere.** Each draw becomes `left` or `right` by which half of the 320-wide screen its centre is in. A rectangle simply resolves to one of the two. A projection is placed as a `left`-anchored layer, and the framebuffer renderer then gives each right-half draw the `right` offset, with the layer's clip spanning both edges. | An element every split-screen player has a copy of, where one identity names all copies: the 4-player battle's health bars (`ortho#AE46B54C`) and ladybug icons. The identity still names content; only the direction comes from where each copy is drawn. |
 
 Two distinctions that cost people days:
 

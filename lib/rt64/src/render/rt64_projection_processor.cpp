@@ -2,7 +2,9 @@
 // RT64
 //
 
+#include <algorithm>
 #include <cstdio>
+#include <set>
 #include <cstdlib>
 #include "rt64_projection_processor.h"
 
@@ -92,6 +94,39 @@ namespace {
                 viewportOrigin = BarHud::viewportOriginFor(orthoClass);
             }
             assert(proj.transformsIndex > 0);
+
+            // BAR_HUD_TRACE=2: every draw inside an orthographic layer, once, with its screen bounds.
+            // Geometry drawn under an orthographic projection never reaches the rectangle list, so
+            // this is the only listing of what such a layer holds -- the 4-player battle's health
+            // bars live in one, together with whatever else that layer draws.
+            if ((proj.type == Projection::Type::Orthographic) && BarHud::traceAllEnabled()) {
+                static std::set<uint64_t> seen;
+                for (uint32_t c = 0; c < proj.gameCallCount; c++) {
+                    const GameCall &call = proj.gameCalls[c];
+                    float minX = 1e9f, minY = 1e9f, maxX = -1e9f, maxY = -1e9f;
+                    const uint32_t indexCount = call.callDesc.triangleCount * 3;
+                    for (uint32_t i = 0; i < indexCount; i++) {
+                        const size_t faceIndex = size_t(call.meshDesc.faceIndicesStart) + i;
+                        if (faceIndex >= drawData.faceIndices.size()) break;
+                        const uint32_t vertexIndex = drawData.faceIndices[faceIndex];
+                        if (vertexIndex >= drawData.posScreen.size()) break;
+                        const hlslpp::float3 &screenPos = drawData.posScreen[vertexIndex];
+                        minX = std::min(minX, float(screenPos[0]));
+                        minY = std::min(minY, float(screenPos[1]));
+                        maxX = std::max(maxX, float(screenPos[0]));
+                        maxY = std::max(maxY, float(screenPos[1]));
+                    }
+                    const uint64_t key = (uint64_t(uint16_t(int(minX))) << 48) | (uint64_t(uint16_t(int(minY))) << 32) |
+                        (uint64_t(uint16_t(int(maxX))) << 16) | uint64_t(uint16_t(int(maxY))) ^
+                        (uint64_t(call.callDesc.triangleCount) << 40) ^ (uint64_t(BarHud::gameState()) << 56);
+                    if (seen.insert(key).second && (seen.size() <= 4000)) {
+                        fprintf(stdout, "[hud-ortho] proj=%u call=%u tris=%u tex=%d screen=(%.1f,%.1f)-(%.1f,%.1f) state=%u\n",
+                            unsigned(sceneProj.projectionIndex), c, unsigned(call.callDesc.triangleCount), int(call.callDesc.textureOn),
+                            minX, minY, maxX, maxY, unsigned(BarHud::gameState()));
+                        fflush(stdout);
+                    }
+                }
+            }
 
             // Skip projections that didn't actually draw anything.
             if (proj.scissorRect.isNull()) {
