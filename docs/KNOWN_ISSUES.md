@@ -5,11 +5,27 @@ Add the negative results, not just the leads — they are the expensive part.
 
 ---
 
-## OPEN -- Mount Mayhem's atmospheric haze is missing: it is depth-buffer fog, and RT64 cannot read BAR's Z-buffer back correctly
+## RESOLVED -- Mount Mayhem's atmospheric haze was missing: depth-buffer fog read through a TLUT
 
 Reported by Daniel 2026-09-19: no haze on Mount Mayhem, with Draw Distance at 1x as well (confirmed in
-`graphics.json`; at 1x `bar_frustum.cpp` leaves the projection matrix untouched). Parked the same day
-after five measurement rounds; the experiment is on the local branch `wip/mayhem-fog`.
+`graphics.json`; at 1x `bar_frustum.cpp` leaves the projection matrix untouched). Parked after five
+measurement rounds, then resolved the same day; the traces and rejected experiment are on the local
+branch `wip/mayhem-fog`.
+
+**Root cause and fix.** The fog draws sample the Z-buffer as a 16-bit IA texture **with the TLUT
+enabled** (`otherMode.H = 0010CCAF`: `textLUT` = IA16). The RDP then indexes the palette with each
+texel's **upper byte** -- here the Z value's exponent and top mantissa bits -- and the game's palette
+maps that to its fog weight. RT64's TMEM decoder (`sampleTMEM`) already does this, which is why the
+haze appeared with Copy with GPU off. The GPU tile-copy path goes through `FbReinterpretCS` instead,
+which had a TLUT branch only for 16-bit to 8-bit (CI8) and passed a 16-bit-to-16-bit read with a TLUT
+through unchanged. `RGBA16toTLUT16` adds that case, for an RGBA16 or DEPTH source: the copy
+round-trips exactly through `Float4ToRGBA16` with no dither, the palette entry at `value >> 8` is
+returned, and the lookup runs per pixel on the scaled target -- smooth at 2x and in widescreen.
+Verified by eye on Mount Mayhem with Copy with GPU on (Daniel, 2026-09-19). Not yet checked: any other
+screen that reads a **colour** framebuffer as a 16-bit texture with a TLUT, which used to get the
+colour unchanged and now gets the palette lookup the hardware would do.
+
+The investigation, kept because each step was a measurement:
 
 **What the haze is.** Not N64 hardware fog. Measured with RT64-side traces (`BAR_DBG_FOG`, on the wip
 branch):
@@ -44,13 +60,9 @@ branch):
   fake 10-10-10-2 value and reads it back as 16/16 to keep precision for colour effects, so a depth
   value comes out as a sawtooth rather than as its two bytes.
 
-**Next, if picked up.** A dedicated, bit-exact DEPTH -> IA16 path in the reinterpretation (split the
-16-bit Z value into its high and low byte), then check at native and at 2x resolution, with and
-without widescreen. It is still to be confirmed which byte the fog really depends on: the combiner
-decode above reads `TEXEL0` alpha, i.e. the low byte, which would itself be a sawtooth, so the
-combiner decode should be re-checked first -- possibly against the RT64 debugger's view of one of
-these draws. A native RT64 effect that computes the same fog from the GPU depth buffer is the
-alternative if the tile-copy path cannot be made exact at scaled resolution.
+**What resolved it.** Re-reading the logged other mode: the combiner's `TEXEL0` alpha is the alpha of
+the **palette entry**, not of the raw texel, because the TLUT is on. The "low byte would be a
+sawtooth" objection in the first write-up was the clue.
 
 ---
 

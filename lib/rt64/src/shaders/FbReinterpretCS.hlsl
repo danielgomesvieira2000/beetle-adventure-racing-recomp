@@ -72,6 +72,29 @@ float4 RGBA16toIA16(float4 inputColor, uint2 inputCoord, uint2 outputCoord) {
     return float4(iFloat, iFloat, iFloat, aFloat);
 }
 
+float4 RGBA16toTLUT16(float4 inputColor) {
+    // BAR: a 16-bit texture sampled with a TLUT indexes the palette with its UPPER byte -- the same
+    // rule sampleTMEM applies on the non-copy path. Beetle Adventure Racing's depth fog (Mount Mayhem)
+    // is exactly this: it reads its Z-buffer as IA16 strips with an IA16 TLUT, so the palette maps
+    // the Z value's high byte (exponent and top mantissa bits) to a fog weight authored by the game.
+    // The source here is either an RGBA16 framebuffer or a depth tile copy, which holds the RGBA16 bit
+    // pattern of the Z value (RtCopyDepthToColorPS); both round-trip exactly through Float4ToRGBA16
+    // with no dither, so the index is the hardware's, taken per pixel from the scaled target.
+    uint nativeColor = Float4ToRGBA16(inputColor, 0, gConstants.usesHDR);
+    uint paletteAddress = RDP_TMEM_PALETTE + ((nativeColor >> 8) << 3);
+    Texture1D<uint> TMEM = gInputTLUT;
+    uint paletteValue = loadTLUT(paletteAddress + 1) | (loadTLUT(paletteAddress) << 8);
+    uint decodedFormat = gConstants.tlutFormat - 1;
+    switch (decodedFormat) {
+    case G_TT_RGBA16:
+        return RGBA16ToFloat4(paletteValue);
+    case G_TT_IA16:
+        return IA16ToFloat4(paletteValue);
+    default:
+        return float4(0.0f, 0.0f, 0.0f, 1.0f);
+    }
+}
+
 [numthreads(FB_COMMON_WORKGROUP_SIZE, FB_COMMON_WORKGROUP_SIZE, 1)]
 void CSMain(uint2 coord : SV_DispatchThreadID) {
     if ((coord.x < gConstants.resolution.x) && (coord.y < gConstants.resolution.y)) {
@@ -80,6 +103,9 @@ void CSMain(uint2 coord : SV_DispatchThreadID) {
         float4 outputColor;
         if ((gConstants.srcFmt == G_IM_FMT_RGBA) && (gConstants.srcSiz == G_IM_SIZ_16b) && (gConstants.dstSiz == G_IM_SIZ_8b) && (gConstants.tlutFormat > 0)) {
             outputColor = RGBA16toCI8(inputColor, inputCoord, coord);
+        }
+        else if (((gConstants.srcFmt == G_IM_FMT_RGBA) || (gConstants.srcFmt == G_IM_FMT_DEPTH)) && (gConstants.srcSiz == G_IM_SIZ_16b) && (gConstants.dstSiz == G_IM_SIZ_16b) && (gConstants.tlutFormat > 0)) {
+            outputColor = RGBA16toTLUT16(inputColor);
         }
         else if ((gConstants.srcSiz == G_IM_SIZ_8b) && ((gConstants.dstFmt == G_IM_FMT_CI) || (gConstants.dstFmt == G_IM_FMT_I)) && (gConstants.dstSiz == G_IM_SIZ_8b)) {
             outputColor = ANY8toI8(inputColor, inputCoord, coord);

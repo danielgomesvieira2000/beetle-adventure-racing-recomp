@@ -401,6 +401,24 @@ The general form of this trap: **any experiment that widens a projection matrix 
 viewport and scissor together is worthless**, because the layer is drawn wider and clipped straight
 back, which looks identical to no change at all.
 
+## Depth fog: the Z-buffer read back through a palette
+
+Mount Mayhem's haze is not N64 hardware fog -- the game's fog setter
+(`func_uvgfxstate_rom_00401F54`) is only ever called with `start = 0` there. It is a render stage of
+its own (`FOG`/`FOGOVER` in the game's profiler): 80 full-width texture rectangles, 3 rows each,
+textured with the game's **own Z-buffer** (`0x3DA800`) as a 16-bit IA texture with an IA16 **TLUT**,
+and blended in cycle 2 as `fog colour x a + memory x (1 - a)`. With a TLUT on, a 16-bit texel indexes
+the palette with its upper byte, so the palette turns the Z value's exponent and top mantissa bits
+into a fog weight the game authored.
+
+RT64 serves such a read from a GPU tile copy of the depth target, which holds the RGBA16 bit pattern of
+the Z value. `FbReinterpretCS` had no case for a 16-bit read with a TLUT and passed it through, so
+there was no fog; `RGBA16toTLUT16` performs the lookup, per pixel on the scaled target. Two things
+that do not work, measured: turning Copy with GPU off (the fog appears from the RDRAM copy of the Z
+buffer, but blocky at 320x240 and offset in widescreen), and reinterpreting the depth as plain IA16
+(`RGBA16toIA16` is deliberately not bit-exact; the whole frame banded). Full account in
+`docs/KNOWN_ISSUES.md`.
+
 ## Settings and where they are registered
 
 Graphics settings persist to `graphics.json` in the config directory and are pushed into the runtime
