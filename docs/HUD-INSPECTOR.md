@@ -99,8 +99,20 @@ the game was racing. In two Coventry Cove runs the race used the same three: `or
 
 Two warnings specific to them. **The outline is the projection's scissor**, which for a full-screen
 layer is the whole screen, so hovering will not tell two such layers apart — try them one at a time
-instead. And a **3D (`persp`) or busy menu layer's identity can still change** as its first draw
-call changes. Tag the 2D layers a race or pause screen opens with, not those.
+instead. And a **busy menu layer's identity can still change** as its first draw call changes. Tag
+the 2D layers a race or pause screen opens with, not those.
+
+**3D (`persp`) layers are `center` by rule and cannot be tagged (19 Sep 2026).** Their identity is
+the hash of the first draw call, and on a moving race view that call changes with the camera, so a
+tag lands on the race view wherever the hash happens to match. A promoted `persp#F6D3F6D5` `cover`
+tag did exactly that on Metro Madness: in one stretch of track the race view zoomed in and dropped to
+stretched 4:3, then recovered further on. `BAR_DBG_PROJ=1` showed the tell -- a perspective
+projection with `covers=1 horiz=1 origin=2048` and still `widen=0`, which only a `stretch`/`cover`
+class produces. `classifyProjection` now returns `center` for every perspective layer, whatever a
+tag or `hud.json` says, and both `persp#` entries were removed from `sBuiltinTags`. The panel still
+lists these layers, with the class they actually get; a dropdown change on one has no effect.
+Verified: the Metro Madness spot stays widescreen, and 24,659 projection decisions in that session
+had no widenable 3D view left unwidened.
 
 **Why the index was dropped (17 Sep 2026).** The identity used to be `<kind>:<projection index>`,
 the number RT64's Game editor shows. That index is only a position in the frame's projection list,

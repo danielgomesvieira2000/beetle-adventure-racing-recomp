@@ -245,9 +245,8 @@ namespace RT64 {
             { "tex:0x002D9188", Class::Sides },
             { "tex:0x002D97B0", Class::Sides },
             { "tex:0x002D9BF0", Class::Sides },
-            // persp#0DB8F095: a 3D layer, tagged Center by Daniel. Center is already the default for a
-            // perspective layer, so this changes nothing unless that default does.
-            { "persp#0DB8F095", Class::Center },
+            // (persp#0DB8F095 Center removed 19 Sep 2026: perspective layers are Center by rule now,
+            // see classifyProjection.)
 
             // Promoted 17 Sep 2026 (after the pause-flicker fix), from hud.json: 26 texture tags, unnamed.
             // tex: identities are texture addresses with no content hash; if one ever pins an element on a
@@ -390,10 +389,9 @@ namespace RT64 {
             { "tex:0x003B3FA0", Class::Center },
             { "tex:0x003BBDB8", Class::Center },
             { "tex:0x003D7CF0", Class::Stretch },
-            // persp#F6D3F6D5: a 3D layer Daniel tagged Cover. A perspective layer's identity can change
-            // when its first draw call does (docs/HUD-INSPECTOR.md), so check it if the effect stops.
+            // (persp#F6D3F6D5 Cover removed 19 Sep 2026: it matched Metro Madness's race view at random
+            // and zoomed it to 4:3. Perspective layers are Center by rule now, see classifyProjection.)
             // tex:0x00172830 is a rectangle: Cover acts only on projections, so for it this is Center.
-            { "persp#F6D3F6D5", Class::Cover },
             { "tex:0x00172830", Class::Cover },
         };
 
@@ -663,6 +661,17 @@ namespace RT64 {
                 if (builtinTag(identity, "", &builtin)) {
                     cls = builtin;
                 }
+            }
+
+            // A 3D (perspective) layer is Center by rule, whatever a tag says. Its identity is the hash
+            // of its first draw call, and on a moving race view that call changes with the camera, so
+            // a tag made on one screen lands on the race view at random spots: a promoted
+            // persp#F6D3F6D5 Cover tag zoomed Metro Madness's view and dropped it to stretched 4:3 in
+            // one stretch of track (measured with BAR_DBG_PROJ: covers=1 horiz=1 origin=none, and
+            // still widen=0). Daniel: the 3D view "should be locked to center". The inspector still
+            // lists these layers, with the class they actually get.
+            if (kind == ProjKind::Perspective) {
+                cls = Class::Center;
             }
 
             // BAR_HUD_TRACE: each distinct orthographic identity once per racing/paused state, with its

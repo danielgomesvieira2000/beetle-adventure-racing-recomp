@@ -21,9 +21,10 @@ which had a TLUT branch only for 16-bit to 8-bit (CI8) and passed a 16-bit-to-16
 through unchanged. `RGBA16toTLUT16` adds that case, for an RGBA16 or DEPTH source: the copy
 round-trips exactly through `Float4ToRGBA16` with no dither, the palette entry at `value >> 8` is
 returned, and the lookup runs per pixel on the scaled target -- smooth at 2x and in widescreen.
-Verified by eye on Mount Mayhem with Copy with GPU on (Daniel, 2026-09-19). Not yet checked: any other
-screen that reads a **colour** framebuffer as a 16-bit texture with a TLUT, which used to get the
-colour unchanged and now gets the palette lookup the hardware would do.
+Verified by eye on Mount Mayhem with Copy with GPU on (Daniel, 2026-09-19), and Daniel checked the
+other courses and the menus afterwards with nothing changed. A screen that reads a **colour**
+framebuffer as a 16-bit texture with a TLUT now gets the palette lookup the hardware would do, where
+it used to get the colour unchanged; none has been seen to change.
 
 The investigation, kept because each step was a measurement:
 
