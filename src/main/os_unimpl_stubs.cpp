@@ -321,6 +321,32 @@ extern "C" void __osSiRawStartDma_recomp(uint8_t* rdram, recomp_context* ctx) {
     // controller poll (per frame) in both the menus and a race, the right cadence for the
     // "every frame" cheat writes (unlocks, debug-options flags). No-op when nothing is enabled.
     bar_cheats::apply_frame(rdram);
+    // A Controller Pak save can restore the Wheel layout (2) without applying its button
+    // preset. The Options screen normally calls func_selection_0040D844(2), which copies
+    // 36 bytes into the active controller table at 0x8002CCB0. Run that same game routine
+    // once when the restored selection first appears in the selection menu. Use a separate
+    // context so the SI callback's registers are untouched; get_function also ensures the
+    // selection overlay is loaded before we invoke its routine.
+    { static bool applied_in_selection = false;
+      constexpr int64_t game_state_addr = (int64_t)(int32_t)0x80025CF0;
+      constexpr int64_t menu_layout_addr = (int64_t)(int32_t)0x8002CD40;
+      constexpr int64_t active_layout_addr = (int64_t)(int32_t)0x8002D064;
+      const int state = (int)MEM_W(0xA4, game_state_addr);
+      if (state != 14) {
+          applied_in_selection = false;
+      } else if (!applied_in_selection && MEM_W(0, menu_layout_addr) == 2 &&
+                 MEM_BU(0, active_layout_addr) == 2 && section_addresses != nullptr) {
+          const int32_t apply_addr = section_addresses[167] + 0xD844;
+          if (recomp_func_t* apply = get_function(apply_addr)) {
+              const int64_t selection_player = (int64_t)section_addresses[167] + 0x20DF0;
+              if (MEM_H(0, selection_player) == 0) {
+                  recomp_context apply_ctx = *ctx;
+                  apply_ctx.r4 = 2;
+                  apply(rdram, &apply_ctx);
+                  applied_in_selection = true;
+              }
+          }
+      } }
     // R6 diagnostic (env-gated BAR_DBG_FPS): the menu/game main loop polls the controller once per
     // iteration, so this hook's call rate == the loop rate. The page-slide animation advances per loop
     // iteration; if this is >> native 60 Hz the slide completes in ~1 display frame ("disabled"-looking).
